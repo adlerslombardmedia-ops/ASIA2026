@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TeamLogo, COLORS, LOGO_URL } from '../lib/hooks';
+import { TeamLogo, COLORS, LOGO_URL, ADLERS_CREST_URL, ADLERS_INSTAGRAM_URL } from '../lib/hooks';
 
 const AWARD_CATEGORIES = [
   { key: 'first_place',   label: '1st Place',     type: 'team',   color: '#FFD400', medal: '1ST' },
@@ -45,9 +45,14 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
 
         <img src={LOGO_URL} alt="Asia Cup 2026" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'contain', margin: '0 auto 8px', display: 'block', border: `2px solid ${COLORS.gold}` }}
           onError={e => { e.target.style.display = 'none'; }} />
-        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: COLORS.gold, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>
-          Adlers Lombard FC Presents
-        </div>
+        <a href={ADLERS_INSTAGRAM_URL} target="_blank" rel="noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4, textDecoration: 'none' }}>
+          <img src={ADLERS_CREST_URL} alt="Adlers Lombard FC" style={{ width: 18, height: 18, objectFit: 'contain' }}
+            onError={e => { e.target.style.display = 'none'; }} />
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: COLORS.gold, letterSpacing: 3, textTransform: 'uppercase' }}>
+            Adlers Lombard FC Presents
+          </span>
+        </a>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', letterSpacing: 1, lineHeight: 1.1, marginBottom: 12 }}>
           ASIA CUP <span style={{ color: COLORS.gold }}>2026</span>
         </h1>

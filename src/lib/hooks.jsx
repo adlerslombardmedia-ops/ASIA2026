@@ -11,6 +11,8 @@ export const COLORS = {
 };
 
 export const LOGO_URL = `${import.meta.env.BASE_URL}images/logo.svg`;
+export const ADLERS_CREST_URL = `${import.meta.env.BASE_URL}images/adlers-lombard-crest.svg`;
+export const ADLERS_INSTAGRAM_URL = 'https://www.instagram.com/adlerslombardfc/';
 
 export const SPONSOR_LOGOS = [
   { name: 'Adpoli', url: `${import.meta.env.BASE_URL}images/sponsors/adpoli.png` },
