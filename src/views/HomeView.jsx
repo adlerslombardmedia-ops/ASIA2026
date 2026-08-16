@@ -30,6 +30,7 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
   };
 
   return (
+    <>
     <div className="animate-fade">
       {/* Hero Banner */}
       <div style={{
@@ -394,6 +395,7 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
           );
         })()}
       </div>
+    </div>
 
       {/* Teams Modal */}
       {showTeamsModal && (
@@ -421,6 +423,6 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
