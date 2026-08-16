@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teams — Asia Cup 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrap">
+
+    <div class="section-header" style="margin-bottom:2rem">
+      <div class="group-label">🏟</div>
+      <h2>All Teams</h2>
+      <div class="accent-bar"></div>
+      <span class="muted" style="font-size:0.85rem">16 Clubs · 4 Groups</span>
+    </div>
+
+    <!-- Group filter tabs -->
+    <div class="tabs" id="group-tabs">
+      <button class="tab-btn active" data-group="all">All Teams</button>
+      <button class="tab-btn" data-group="A">Group A</button>
+      <button class="tab-btn" data-group="B">Group B</button>
+      <button class="tab-btn" data-group="C">Group C</button>
+      <button class="tab-btn" data-group="D">Group D</button>
+      <button class="tab-btn" data-group="ungrouped">Unassigned</button>
+    </div>
+
+    <div class="grid-4" id="teams-grid"></div>
+
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    renderNav('teams');
+    const data = getData();
+    let activeGroup = 'all';
+
+    // Build group membership map
+    const teamGroup = {};
+    ['A','B','C','D'].forEach(g => data.groups[g].forEach(id => teamGroup[id] = g));
+
+    function renderTeams() {
+      const grid = document.getElementById('teams-grid');
+      let teams = Object.values(data.teams);
+
+      if (activeGroup === 'ungrouped') {
+        teams = teams.filter(t => !teamGroup[t.id]);
+      } else if (activeGroup !== 'all') {
+        teams = teams.filter(t => teamGroup[t.id] === activeGroup);
+      }
+
+      if (!teams.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>No teams in this group yet</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = teams.map(t => {
+        const grp = teamGroup[t.id];
+        return `
+          <div class="team-card" onclick="goToTeam('${t.id}')">
+            ${teamLogoEl(t, 'lg')}
+            <h3>${t.name}</h3>
+            <p style="margin-bottom:0.4rem">${t.shortName}</p>
+            ${grp ? `<span class="pill" style="background:rgba(255,212,0,0.15);color:var(--gold);border:1px solid var(--gold)">Group ${grp}</span>`
+                  : `<span class="pill pill-upcoming">Unassigned</span>`}
+            <p style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted)">${t.players.length} players registered</p>
+          </div>`;
+      }).join('');
+    }
+
+    // Tab switching
+    document.getElementById('group-tabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeGroup = btn.dataset.group;
+      renderTeams();
+    });
+
+    renderTeams();
+  </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match — Asia Cup 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .pitch-full { background:#1e4d10;border-radius:var(--radius);padding:1rem;position:relative;overflow:hidden; }
+    .pitch-svg-full { width:100%;max-height:520px; }
+    .events-two-col { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+    @media(max-width:600px){ .events-two-col{grid-template-columns:1fr;} }
+    .event-side-label { font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;letter-spacing:0.5px; }
+  </style>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div id="match-content">
+    <div class="empty-state" style="padding:4rem"><div class="icon">⚽</div><h3>Loading match…</h3></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    renderNav('groups');
+
+    const data    = getData();
+    const matchId = getParam('id');
+
+    function findMatch(id) {
+      if (data.matches[id]) return data.matches[id];
+      for (const round of ['QF','SF','F']) {
+        const m = data.knockout[round].find(function(m){ return m.id === id; });
+        if (m) return m;
+      }
+      return null;
+    }
+
+    const match = findMatch(matchId);
+
+    if (!match) {
+      document.getElementById('match-content').innerHTML =
+        '<div class="empty-state" style="padding:4rem"><div class="icon">❓</div><h3>Match not found</h3>' +
+        '<a href="groups.html" class="btn btn-primary" style="margin-top:1rem">Back to Groups</a></div>';
+    } else {
+      const home = data.teams[match.homeTeam] || null;
+      const away = data.teams[match.awayTeam] || null;
+
+      document.title = (home ? home.shortName : 'TBD') + ' vs ' + (away ? away.shortName : 'TBD') + ' — Asia Cup 2026';
+
+      function getPlayer(teamId, pid) {
+        var team = data.teams[teamId];
+        return team ? team.players.find(function(p){ return p.id === pid; }) : null;
+      }
+
+      // ── Logo div (no nested template) ──────────────────
+      function logoDiv(team, size) {
+        size = size || 80;
+        if (team && team.logo) {
+          return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);background:var(--card2);margin:0 auto">' +
+                 '<img src="' + team.logo + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>';
+        }
+        var initials = team ? team.shortName.substring(0,3) : 'TBD';
+        var bg  = team ? team.primaryColor  : '#333';
+        var col = team ? team.secondaryColor : '#fff';
+        return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + bg +
+               ';color:' + col + ';display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;border:3px solid var(--gold);margin:0 auto">' +
+               initials + '</div>';
+      }
+
+      // ── Events list ────────────────────────────────────
+      function buildEventsList(goals, assists) {
+        var all = goals.map(function(e){ return Object.assign({}, e, {icon:'⚽'}); })
+          .concat(assists.map(function(e){ return Object.assign({}, e, {icon:'🅰️'}); }))
+          .sort(function(a,b){ return (a.minute||0) - (b.minute||0); });
+        if (!all.length) return '<span class="muted" style="font-size:0.82rem">—</span>';
+        return all.map(function(e){
+          return '<div class="event-item">' +
+                 '<span class="event-minute">' + (e.minute||'?') + '\'</span>' +
+                 '<span class="event-icon">' + e.icon + '</span>' +
+                 '<span>' + (e.playerName||'Unknown') + '</span>' +
+                 '</div>';
+        }).join('');
+      }
+
+      // ── Pitch SVG ──────────────────────────────────────
+      function buildPitchSVG() {
+        var W = 340, H = 520;
+        var cx = W/2, cy = H/2;
+
+        var defaultHome = [
+          {x:170,y:470},{x:80,y:400},{x:260,y:400},
+          {x:50,y:290},{x:170,y:300},{x:290,y:290},{x:170,y:190}
+        ];
+        var defaultAway = [
+          {x:170,y:50},{x:80,y:120},{x:260,y:120},
+          {x:50,y:230},{x:170,y:220},{x:290,y:230},{x:170,y:330}
+        ];
+
+        function makeCircles(lineup, positions, defaults, teamData, teamColor, textColor) {
+          return defaults.map(function(dp, i) {
+            var p   = (positions && positions[i]) ? positions[i] : dp;
+            var pid = lineup ? lineup[i] : null;
+            var player = pid && teamData ? teamData.players.find(function(pl){ return pl.id === pid; }) : null;
+            var num  = player ? player.number : (i + 1);
+            var name = player ? player.name.split(' ')[0].substring(0,8) : 'P' + (i+1);
+            var col  = teamColor  || '#FFD400';
+            var tc   = textColor  || '#282828';
+            return '<g class="player-circle">' +
+                   '<circle cx="' + p.x + '" cy="' + p.y + '" r="18" fill="' + col + '" stroke="white" stroke-width="2"/>' +
+                   '<text x="' + p.x + '" y="' + p.y + '" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="900" fill="' + tc + '">' + num + '</text>' +
+                   '<text x="' + p.x + '" y="' + (p.y+28) + '" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.9)">' + name + '</text>' +
+                   '</g>';
+          }).join('');
+        }
+
+        var homeColor = home ? home.primaryColor  : '#FFD400';
+        var homeTxt   = home ? home.secondaryColor : '#282828';
+        var awayColor = away ? away.primaryColor  : '#CE2B37';
+        var awayTxt   = away ? away.secondaryColor : '#ffffff';
+
+        var stripes = '';
+        for (var i = 0; i < 13; i++) {
+          stripes += '<rect x="0" y="' + (i*40) + '" width="' + W + '" height="20" fill="rgba(0,0,0,0.07)"/>';
+        }
+
+        var awayCircles = makeCircles(match.awayLineup, match.awayPositions, defaultAway, away, awayColor, awayTxt);
+        var homeCircles = makeCircles(match.homeLineup, match.homePositions, defaultHome, home, homeColor, homeTxt);
+
+        return '<svg class="pitch-svg-full" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' +
+          '<rect width="' + W + '" height="' + H + '" fill="#2d5a1b"/>' +
+          stripes +
+          '<rect x="8" y="8" width="' + (W-16) + '" height="' + (H-16) + '" rx="4" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>' +
+          '<line x1="8" y1="' + cy + '" x2="' + (W-8) + '" y2="' + cy + '" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="40" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="3" fill="rgba(255,255,255,0.6)"/>' +
+          '<rect x="' + (cx-55) + '" y="8" width="110" height="70" rx="2" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>' +
+          '<rect x="' + (cx-28) + '" y="8" width="56" height="30" rx="1" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>' +
+          '<rect x="' + (cx-55) + '" y="' + (H-78) + '" width="110" height="70" rx="2" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>' +
+          '<rect x="' + (cx-28) + '" y="' + (H-38) + '" width="56" height="30" rx="1" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>' +
+          '<rect x="' + (cx-22) + '" y="0" width="44" height="10" rx="2" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>' +
+          '<rect x="' + (cx-22) + '" y="' + (H-10) + '" width="44" height="10" rx="2" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>' +
+          '<text x="' + cx + '" y="' + (cy-130) + '" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.4)" font-weight="700">' + (away ? away.shortName : 'AWAY') + '</text>' +
+          '<text x="' + cx + '" y="' + (cy+138) + '" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.4)" font-weight="700">' + (home ? home.shortName : 'HOME') + '</text>' +
+          awayCircles +
+          homeCircles +
+          '</svg>';
+      }
+
+      // ── Pre-build all complex sections ─────────────────
+      var homeEvents = (match.events||[]).filter(function(e){ return e.teamId === match.homeTeam; });
+      var awayEvents = (match.events||[]).filter(function(e){ return e.teamId === match.awayTeam; });
+      var homeGoals   = homeEvents.filter(function(e){ return e.type === 'goal'; });
+      var awayGoals   = awayEvents.filter(function(e){ return e.type === 'goal'; });
+      var homeAssists = homeEvents.filter(function(e){ return e.type === 'assist'; });
+      var awayAssists = awayEvents.filter(function(e){ return e.type === 'assist'; });
+
+      var stageBadge = match.stage === 'group'
+        ? 'Group ' + match.group + ' Match'
+        : (match.label || 'Knockout');
+
+      var scoreHtml = match.played
+        ? '<div class="sb-score">' + match.homeScore + '<span style="color:var(--muted);font-size:2rem;margin:0 0.3rem">-</span>' + match.awayScore + '</div>'
+        : '<div class="sb-score" style="color:var(--muted);font-size:2rem">VS</div>';
+
+      var statusPill = '<span class="pill ' + (match.played ? 'pill-played' : 'pill-upcoming') + '">' + (match.played ? 'Full Time' : 'Upcoming') + '</span>';
+
+      var eventsSection = '';
+      if (match.played) {
+        eventsSection =
+          '<div class="card section-gap">' +
+          '<div class="section-header" style="margin-bottom:1rem"><h2 style="font-size:1rem">Match Events</h2><div class="accent-bar"></div></div>' +
+          '<div class="events-two-col">' +
+          '<div><div class="event-side-label">' + (home ? home.shortName : 'Home') + '</div>' + buildEventsList(homeGoals, homeAssists) + '</div>' +
+          '<div><div class="event-side-label">' + (away ? away.shortName : 'Away') + '</div>' + buildEventsList(awayGoals, awayAssists) + '</div>' +
+          '</div></div>';
+      }
+
+      var homePrimary = home ? home.primaryColor  : '#FFD400';
+      var awayPrimary = away ? away.primaryColor  : '#CE2B37';
+      var homeName    = home ? home.name : 'TBD';
+      var awayName    = away ? away.name : 'TBD';
+
+      var legendHtml =
+        '<div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:50%;background:' + homePrimary + '"></div><span style="font-size:0.82rem">' + homeName + '</span></div>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:50%;background:' + awayPrimary + '"></div><span style="font-size:0.82rem">' + awayName + '</span></div>' +
+        '</div>';
+
+      var benchSection = '';
+      var hLen = (match.homeLineup||[]).length;
+      var aLen = (match.awayLineup||[]).length;
+      if (hLen > 7 || aLen > 7) {
+        var homeBench = (match.homeLineup||[]).slice(7).map(function(pid){
+          var p = getPlayer(match.homeTeam, pid);
+          return p ? '<div class="player-chip"><div class="jersey-num">' + (p.number||'?') + '</div>' + p.name + '</div>' : '';
+        }).join('');
+        var awayBench = (match.awayLineup||[]).slice(7).map(function(pid){
+          var p = getPlayer(match.awayTeam, pid);
+          return p ? '<div class="player-chip"><div class="jersey-num">' + (p.number||'?') + '</div>' + p.name + '</div>' : '';
+        }).join('');
+        benchSection =
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">' +
+          '<div><div class="event-side-label">Bench — ' + (home ? home.shortName : 'Home') + '</div>' + homeBench + '</div>' +
+          '<div><div class="event-side-label">Bench — ' + (away ? away.shortName : 'Away') + '</div>' + awayBench + '</div>' +
+          '</div>';
+      }
+
+      // ── Assemble final HTML ────────────────────────────
+      var html =
+        '<div class="scoreboard">' +
+          '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:1px">' + stageBadge + (match.date ? ' · ' + fmtDate(match.date) : '') + '</div>' +
+          '<div class="scoreboard-teams">' +
+            '<div class="sb-team" style="cursor:pointer" onclick="goToTeam(\'' + match.homeTeam + '\')">' +
+              logoDiv(home) +
+              '<div class="sb-team-name" style="margin-top:0.8rem">' + homeName + '</div>' +
+            '</div>' +
+            '<div style="text-align:center">' +
+              scoreHtml +
+              '<div class="sb-meta">' + statusPill + '</div>' +
+            '</div>' +
+            '<div class="sb-team" style="cursor:pointer" onclick="goToTeam(\'' + match.awayTeam + '\')">' +
+              logoDiv(away) +
+              '<div class="sb-team-name" style="margin-top:0.8rem">' + awayName + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="page-wrap" style="padding-top:1.5rem">' +
+          eventsSection +
+          '<div class="card section-gap">' +
+            '<div class="section-header" style="margin-bottom:1rem">' +
+              '<h2 style="font-size:1rem">Starting Lineup</h2>' +
+              '<div class="accent-bar"></div>' +
+              '<span class="muted" style="font-size:0.8rem">7-a-side</span>' +
+            '</div>' +
+            legendHtml +
+            '<div class="pitch-full">' + buildPitchSVG() + '</div>' +
+            benchSection +
+          '</div>' +
+          '<div style="text-align:center;margin-top:1rem">' +
+            '<a href="javascript:history.back()" class="btn btn-secondary">← Back</a>' +
+          '</div>' +
+        '</div>';
+
+      document.getElementById('match-content').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

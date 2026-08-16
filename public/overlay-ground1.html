@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Asia Cup 2026 Overlay – Ground 1</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    font-family: 'Arial Black', Arial, sans-serif;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: SCOREBOARD BLOCK ── */
+  #scoreboard-block {
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  #scoreboard-block.visible { opacity: 1; }
+
+  /* Match label + timer row above score bar */
+  #meta-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 6px;
+    padding-left: 4px;
+  }
+  #match-label-text {
+    font-size: 13px;
+    font-weight: 900;
+    color: #000;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255,255,255,0.8), 0 1px 3px rgba(255,255,255,0.6);
+  }
+  #timer-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(10,10,10,0.8);
+    border: 1.5px solid #FFD400;
+    border-radius: 20px;
+    padding: 3px 12px;
+  }
+  #timer-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #FF3D57;
+    flex-shrink: 0;
+  }
+  #timer-dot.running { animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+  #timer-text {
+    font-size: 16px;
+    font-weight: 900;
+    color: #FFD400;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+  }
+
+  /* Score bar */
+  #score-bar {
+    display: flex;
+    align-items: stretch;
+    height: 76px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.75);
+    min-width: 520px;
+  }
+  .team-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 28px;
+    background: rgba(8,8,8,0.93);
+    min-width: 170px;
+  }
+  .team-name {
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  #score-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFD400;
+    min-width: 120px;
+    gap: 4px;
+    padding: 0 8px;
+  }
+  .score-num {
+    font-size: 40px;
+    font-weight: 900;
+    color: #000;
+    min-width: 40px;
+    text-align: center;
+    line-height: 1;
+  }
+  .score-sep {
+    font-size: 32px;
+    font-weight: 900;
+    color: rgba(0,0,0,0.35);
+  }
+
+  /* ── RIGHT: ASIA CUP BRANDING ── */
+  #branding-block {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(8,8,8,0.88);
+    border-radius: 14px;
+    padding: 14px 22px;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.7);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  #branding-block.visible { opacity: 1; }
+  #branding-block img {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    object-fit: contain;
+  }
+  #branding-text-title {
+    font-size: 18px;
+    font-weight: 900;
+    color: #FFD400;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  #branding-text-sub {
+    font-size: 11px;
+    font-weight: 700;
+    color: #aaa;
+    letter-spacing: 1px;
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #conn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+  }
+
+  /* ── SPONSORS STRIP ── */
+  #sponsors-strip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 1920px;
+    height: 72px;
+    background: rgba(8,8,8,0.92);
+    border-top: 2px solid rgba(255,212,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 40px;
+    transform: translateY(100%);
+    transition: transform 0.4s ease;
+  }
+  #sponsors-strip.visible { transform: translateY(0); }
+  #sponsors-label {
+    font-size: 11px;
+    font-weight: 900;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 28px;
+    flex-shrink: 0;
+  }
+  #sponsors-logos {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    flex: 1;
+  }
+  .sponsor-img {
+    height: 38px;
+    max-width: 140px;
+    object-fit: contain;
+    filter: brightness(0.9);
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+
+<!-- LEFT: Scoreboard -->
+<div id="scoreboard-block">
+  <div id="meta-row">
+    <span id="match-label-text"></span>
+    <div id="timer-wrap">
+      <div id="timer-dot"></div>
+      <span id="timer-text">00:00</span>
+    </div>
+  </div>
+  <div id="score-bar">
+    <div class="team-block"><span class="team-name" id="home-name">HOME</span></div>
+    <div id="score-center">
+      <span class="score-num" id="home-score">0</span>
+      <span class="score-sep">:</span>
+      <span class="score-num" id="away-score">0</span>
+    </div>
+    <div class="team-block"><span class="team-name" id="away-name">AWAY</span></div>
+  </div>
+</div>
+
+<!-- RIGHT: Asia Cup Branding -->
+<div id="branding-block">
+  <img src="images/logo.svg" alt="Asia Cup 2026" onerror="this.style.display='none'" />
+  <div>
+    <div id="branding-text-title">Asia Cup 2026</div>
+    <div id="branding-text-sub">
+      Ground 1
+      <div id="conn-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPONSORS STRIP -->
+<div id="sponsors-strip">
+  <span id="sponsors-label">Our Sponsors</span>
+  <div id="sponsors-logos">
+    <img class="sponsor-img" src="images/sponsors/bloom.png"   alt="Bloom"    onerror="this.style.display='none'" />
+    <img class="sponsor-img" src="images/sponsors/arcon.png"   alt="Arcon"    onerror="this.style.display='none'" />
+    <img class="sponsor-img" src="images/sponsors/finetrip.png" alt="A Fine Trip" onerror="this.style.display='none'" />
+    <img class="sponsor-img" src="images/sponsors/diamond.png" alt="Diamond"  onerror="this.style.display='none'" />
+    <img class="sponsor-img" src="images/sponsors/adpoli.png"  alt="Adpoli"   onerror="this.style.display='none'" />
+    <img class="sponsor-img" src="images/sponsors/hiz.png"     alt="Hiz"      onerror="this.style.display='none'" />
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://lnsyldupanemvmdjovhi.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxuc3lsZHVwYW5lbXZtZGpvdmhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyODE2NTIsImV4cCI6MjA5NDg1NzY1Mn0.bv-Up7sIM1fTh_wLxf9fOqzSSZ4Iy1rDOq6CXh_CdTg';
+const GROUND_KEY    = 'overlay_ground1';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+let state = null;
+let timerInterval = null;
+
+function pad(n) { return String(Math.floor(n)).padStart(2, '0'); }
+
+function calcTimer(t) {
+  if (!t) return '00:00';
+  let secs = (t.offset || 0);
+  if (t.running && t.started_at) secs += (Date.now() - new Date(t.started_at).getTime()) / 1000;
+  secs = Math.max(0, Math.floor(secs));
+  return pad(secs / 60) + ':' + pad(secs % 60);
+}
+
+function render(data) {
+  if (!data) return;
+  state = data;
+  const visible = data.visible !== false;
+  const hasTeams = !!(data.home || data.away);
+
+  document.getElementById('home-name').textContent  = data.home  || 'HOME';
+  document.getElementById('away-name').textContent  = data.away  || 'AWAY';
+  document.getElementById('home-score').textContent = data.home_score ?? 0;
+  document.getElementById('away-score').textContent = data.away_score ?? 0;
+
+  const labelEl = document.getElementById('match-label-text');
+  // Strip team names from label for cleaner display (just keep prefix like "Group A · Match 1")
+  let labelDisplay = data.label || '';
+  const dashIdx = labelDisplay.indexOf(' — ');
+  if (dashIdx !== -1) labelDisplay = labelDisplay.slice(0, dashIdx);
+  labelEl.textContent = labelDisplay;
+
+  document.getElementById('timer-dot').classList.toggle('running', !!(data.timer?.running));
+  document.getElementById('timer-text').textContent = calcTimer(data.timer);
+
+  document.getElementById('scoreboard-block').classList.toggle('visible', visible && hasTeams);
+  document.getElementById('branding-block').classList.toggle('visible', visible);
+  document.getElementById('sponsors-strip').classList.toggle('visible', visible && !!(data.show_sponsors));
+
+  clearInterval(timerInterval);
+  if (data.timer?.running) {
+    timerInterval = setInterval(() => {
+      document.getElementById('timer-text').textContent = calcTimer(state?.timer);
+    }, 1000);
+  }
+}
+
+function setConnected(ok) {
+  const dot = document.getElementById('conn-dot');
+  if (dot) dot.style.background = ok ? '#00C853' : '#FF3D57';
+}
+
+async function load() {
+  try {
+    const { data } = await sb.from('tournament_state').select('value').eq('key', GROUND_KEY).single();
+    setConnected(true);
+    if (data) render(data.value);
+  } catch { setConnected(false); }
+}
+
+sb.channel('overlay-ground1')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_state', filter: `key=eq.${GROUND_KEY}` },
+    payload => { setConnected(true); render(payload.new?.value || payload.new); })
+  .subscribe(s => {
+    if (s === 'SUBSCRIBED') setConnected(true);
+    if (s === 'CLOSED' || s === 'CHANNEL_ERROR') setConnected(false);
+  });
+
+load();
+</script>
+</body>
+</html>

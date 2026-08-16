@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team — Asia Cup 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .team-hero { background:var(--card);border-bottom:3px solid var(--gold);padding:2rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap; }
+    .team-hero-logo { width:100px;height:100px;border-radius:50%;object-fit:cover;border:4px solid var(--gold);flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:900;color:var(--gold);overflow:hidden; }
+    .team-hero-logo img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+    .team-hero-info h1 { font-size:1.8rem;font-weight:900; }
+    .team-hero-info p  { color:var(--muted);margin-top:0.3rem; }
+    .stat-strip { display:flex;gap:1.5rem;margin-top:1rem;flex-wrap:wrap; }
+    .stat-strip .s { text-align:center; }
+    .stat-strip .s .n { font-size:1.5rem;font-weight:900;color:var(--gold); }
+    .stat-strip .s .l { font-size:0.72rem;color:var(--muted);text-transform:uppercase; }
+    .pos-badge { padding:0.2rem 0.6rem;border-radius:4px;font-size:0.72rem;font-weight:700;text-transform:uppercase; }
+    .pos-GK { background:rgba(255,212,0,0.2);color:var(--gold); }
+    .pos-DEF { background:rgba(0,146,70,0.2);color:var(--green); }
+    .pos-MID { background:rgba(252,171,40,0.2);color:var(--orange); }
+    .pos-FWD { background:rgba(206,43,55,0.2);color:var(--red); }
+    .pos-other { background:var(--card2);color:var(--muted); }
+  </style>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+
+  <div id="team-hero"></div>
+
+  <div class="page-wrap">
+    <div class="tabs" style="margin-bottom:1.5rem">
+      <button class="tab-btn active" onclick="showTab('squad')">Squad</button>
+      <button class="tab-btn" onclick="showTab('matches')">Matches</button>
+      <button class="tab-btn" onclick="showTab('stats')">Statistics</button>
+    </div>
+
+    <div id="tab-squad" class="tab-panel active"></div>
+    <div id="tab-matches" class="tab-panel"></div>
+    <div id="tab-stats" class="tab-panel"></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    renderNav('teams');
+    const data  = getData();
+    const teamId = getParam('id');
+    const team   = data.teams[teamId];
+
+    if (!team) {
+      document.getElementById('team-hero').innerHTML = `<div class="empty-state" style="padding:4rem"><div class="icon">❓</div><h3>Team not found</h3><a href="teams.html" class="btn btn-primary" style="margin-top:1rem">Back to Teams</a></div>`;
+    } else {
+      document.title = `${team.name} — Asia Cup 2026`;
+
+      // Find which group
+      const teamGroup = ['A','B','C','D'].find(g => data.groups[g].includes(teamId)) || null;
+      const standings = teamGroup ? calculateStandings(teamGroup, data) : [];
+      const teamStanding = standings.find(s => s.teamId === teamId) || { played:0,won:0,drawn:0,lost:0,gf:0,ga:0,gd:0,points:0 };
+
+      // Goals/assists by players on this team
+      const allMatches = [
+        ...Object.values(data.matches),
+        ...data.knockout.QF,...data.knockout.SF,...data.knockout.F
+      ];
+      const playerStats = {};
+      allMatches.forEach(m => {
+        if (!m.played) return;
+        (m.events||[]).forEach(ev => {
+          if (ev.teamId !== teamId) return;
+          if (!playerStats[ev.playerId]) playerStats[ev.playerId] = { goals:0, assists:0 };
+          if (ev.type==='goal')   playerStats[ev.playerId].goals++;
+          if (ev.type==='assist') playerStats[ev.playerId].assists++;
+        });
+      });
+
+      // Hero
+      const logoHtml = team.logo
+        ? `<div class="team-hero-logo"><img src="${team.logo}" alt="${team.name}"></div>`
+        : `<div class="team-hero-logo" style="background:${team.primaryColor};color:${team.secondaryColor}">${team.shortName}</div>`;
+
+      document.getElementById('team-hero').innerHTML = `
+        <div class="team-hero">
+          ${logoHtml}
+          <div class="team-hero-info">
+            <h1>${team.name}</h1>
+            <p>${teamGroup ? `Group ${teamGroup}` : 'Group TBD'} · ${team.players.length} Players</p>
+            <div class="stat-strip">
+              <div class="s"><div class="n">${teamStanding.points}</div><div class="l">Points</div></div>
+              <div class="s"><div class="n">${teamStanding.played}</div><div class="l">Played</div></div>
+              <div class="s"><div class="n">${teamStanding.won}</div><div class="l">Won</div></div>
+              <div class="s"><div class="n">${teamStanding.drawn}</div><div class="l">Drawn</div></div>
+              <div class="s"><div class="n">${teamStanding.lost}</div><div class="l">Lost</div></div>
+              <div class="s"><div class="n">${teamStanding.gf}</div><div class="l">Goals For</div></div>
+              <div class="s"><div class="n">${teamStanding.ga}</div><div class="l">Goals Against</div></div>
+            </div>
+          </div>
+        </div>`;
+
+      // Squad tab
+      function posCls(pos) {
+        const p = (pos||'').toUpperCase();
+        if (p === 'GK')  return 'pos-GK';
+        if (p === 'DEF' || p === 'CB' || p === 'LB' || p === 'RB') return 'pos-DEF';
+        if (p === 'MID' || p === 'CM' || p === 'LM' || p === 'RM' || p === 'DM' || p === 'AM') return 'pos-MID';
+        if (p === 'FWD' || p === 'ST' || p === 'LW' || p === 'RW' || p === 'CF') return 'pos-FWD';
+        return 'pos-other';
+      }
+
+      const sorted = [...team.players].sort((a,b) => (parseInt(a.number)||99) - (parseInt(b.number)||99));
+
+      document.getElementById('tab-squad').innerHTML = sorted.length
+        ? `<div class="card">
+            <table>
+              <thead><tr><th>#</th><th>Name</th><th>Position</th><th>Goals</th><th>Assists</th></tr></thead>
+              <tbody>
+                ${sorted.map(p => {
+                  const ps = playerStats[p.id] || { goals:0, assists:0 };
+                  return `<tr>
+                    <td><div class="jersey-num">${p.number||'?'}</div></td>
+                    <td><strong>${p.name}</strong></td>
+                    <td><span class="pos-badge ${posCls(p.position)}">${p.position||'—'}</span></td>
+                    <td><strong class="gold">${ps.goals}</strong></td>
+                    <td>${ps.assists}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+           </div>`
+        : `<div class="empty-state"><div class="icon">👥</div><h3>No players registered yet</h3></div>`;
+
+      // Matches tab
+      const teamMatches = allMatches.filter(m => m.homeTeam === teamId || m.awayTeam === teamId);
+      document.getElementById('tab-matches').innerHTML = teamMatches.length
+        ? `<div style="display:grid;gap:0.6rem">${teamMatches.map(m => renderMatchCard(m, data, 'goToMatch')).join('')}</div>`
+        : `<div class="empty-state"><div class="icon">📅</div><h3>No matches scheduled yet</h3></div>`;
+
+      // Stats tab
+      const topPlayers = sorted.map(p => ({ ...p, ...(playerStats[p.id]||{goals:0,assists:0}) }))
+        .sort((a,b) => b.goals - a.goals || b.assists - a.assists);
+
+      document.getElementById('tab-stats').innerHTML = `
+        <div class="card">
+          <h3 style="margin-bottom:1rem;color:var(--gold)">Player Statistics</h3>
+          <table>
+            <thead><tr><th>#</th><th>Player</th><th>Position</th><th>Goals</th><th>Assists</th><th>Contributions</th></tr></thead>
+            <tbody>
+              ${topPlayers.map((p,i) => `
+                <tr>
+                  <td class="muted">${i+1}</td>
+                  <td><strong>${p.name}</strong></td>
+                  <td><span class="pos-badge ${posCls(p.position)}">${p.position||'—'}</span></td>
+                  <td><strong class="gold">${p.goals||0}</strong></td>
+                  <td>${p.assists||0}</td>
+                  <td>${(p.goals||0)+(p.assists||0)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function showTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
