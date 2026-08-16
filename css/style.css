@@ -25,9 +25,13 @@
 
 body {
   font-family: 'Montserrat', system-ui, sans-serif;
-  background: var(--darker);
   color: var(--white);
   min-height: 100vh;
+  background-color: var(--darker);
+  background-image:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 40px, transparent 40px, transparent 80px),
+    radial-gradient(circle, rgba(255,212,0,0.05) 1px, transparent 1.5px);
+  background-size: auto, 26px 26px;
 }
 
 a { color: var(--gold); text-decoration: none; }

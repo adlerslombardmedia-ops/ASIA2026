@@ -22,6 +22,10 @@
   --italy-green: #009246;
   --italy-red: #CE2B37;
 
+  /* Background pattern */
+  --pattern-line: rgba(255,255,255,0.02);
+  --pattern-dot: rgba(255,212,0,0.06);
+
   /* Spacing */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -41,10 +45,12 @@
   --green-bg: #00C85318;
   --red-bg: #FF3D5718;
   --gold-glow: #FFD40030;
+  --pattern-line: rgba(0,0,0,0.035);
+  --pattern-dot: rgba(200,140,0,0.09);
 }
 
 [data-theme="light"] body {
-  background: var(--darker);
+  background-color: var(--darker);
   color: var(--text);
 }
 
@@ -131,13 +137,17 @@ html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
 body {
   font-family: 'Montserrat', system-ui, sans-serif;
-  background: var(--darker);
   color: var(--text);
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
+  background-color: var(--darker);
+  background-image:
+    repeating-linear-gradient(135deg, var(--pattern-line) 0px, var(--pattern-line) 40px, transparent 40px, transparent 80px),
+    radial-gradient(circle, var(--pattern-dot) 1px, transparent 1.5px);
+  background-size: auto, 26px 26px;
 }
 
 #root {
