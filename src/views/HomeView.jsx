@@ -75,8 +75,9 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
           <button key={tab.key} onClick={() => setSubTab(tab.key)}
             className="tappable"
             style={{
-              flex: 1, padding: '12px 0', fontSize: '0.75rem', fontWeight: 800,
-              textTransform: 'uppercase', letterSpacing: 0.5, background: 'transparent',
+              flex: 1, padding: '12px 4px', fontSize: 'clamp(0.6rem, 2.8vw, 0.75rem)', fontWeight: 800,
+              textTransform: 'uppercase', letterSpacing: 0.3, background: 'transparent',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               color: subTab === tab.key ? COLORS.gold : '#666',
               borderBottom: subTab === tab.key ? `2px solid ${COLORS.gold}` : '2px solid transparent',
               transition: 'all 0.2s ease',
