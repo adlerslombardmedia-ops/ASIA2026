@@ -25,6 +25,7 @@
   /* Background pattern */
   --pattern-line: rgba(255,255,255,0.02);
   --pattern-dot: rgba(255,212,0,0.06);
+  --bkt-line: rgba(255,255,255,0.22);
 
   /* Spacing */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -47,6 +48,7 @@
   --gold-glow: #FFD40030;
   --pattern-line: rgba(0,0,0,0.035);
   --pattern-dot: rgba(200,140,0,0.09);
+  --bkt-line: rgba(0,0,0,0.22);
 }
 
 [data-theme="light"] body {
@@ -490,6 +492,25 @@ button {
 
 .kcard:hover { border-color: var(--gold-glow); }
 .kcard.tappable:active { transform: scale(0.98); }
+
+/* ─── Knockout Bracket Tree ─────────────────────────────────────────────── */
+.bkt-connector { position: relative; flex: 1; width: 22px; }
+.bkt-connector::before {
+  content: '';
+  position: absolute;
+  left: 0; width: 11px;
+  top: 25%; bottom: 25%;
+  border-top: 2px solid var(--bkt-line);
+  border-bottom: 2px solid var(--bkt-line);
+  border-right: 2px solid var(--bkt-line);
+  border-radius: 0 4px 4px 0;
+}
+.bkt-connector::after {
+  content: '';
+  position: absolute;
+  left: 11px; width: 11px; top: 50%;
+  border-top: 2px solid var(--bkt-line);
+}
 
 /* ─── Confetti (easter egg) ─────────────────────────────────────────────── */
 .confetti-piece {

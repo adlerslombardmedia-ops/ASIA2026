@@ -221,95 +221,107 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
         )}
 
         {/* KNOCKOUTS TAB */}
-        {subTab === 'knockouts' && (
-          <div className="animate-fade">
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>Championship Bracket</div>
-              <div style={{ fontSize: '0.72rem', color: '#666', marginTop: 2 }}>Knockout stage — single elimination</div>
+        {subTab === 'knockouts' && (() => {
+          const byId = id => matches.find(m => m.id === id);
+          const qf = ['qf1', 'qf2', 'qf3', 'qf4'].map(byId);
+          const sf = ['sf1', 'sf2'].map(byId);
+          const finalMatch = byId('final');
+          const thirdMatch = byId('third');
+
+          const BracketRow = (team, sourceLabel, score, isWinner) => (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 10px',
+              background: isWinner ? 'rgba(255,212,0,0.1)' : 'transparent' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <TeamLogo team={team} size={22} />
+                <span className="truncate" style={{ fontSize: '0.74rem', fontWeight: isWinner ? 800 : 600,
+                  color: isWinner ? COLORS.gold : team ? undefined : '#666', fontStyle: team ? 'normal' : 'italic' }}>
+                  {team?.short_name || team?.name || sourceLabel || 'TBD'}
+                </span>
+              </div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: COLORS.gold, flexShrink: 0 }}>{score}</span>
             </div>
+          );
 
-            {['QF', 'SF', '3P', 'F'].map(stage => {
-              const stageMatches = matches.filter(m => m.stage === stage);
-              const sortedStageMatches = sortMatches(stageMatches);
-              const stageLabel = stage === 'QF' ? 'Quarter-Finals' : stage === 'SF' ? 'Semi-Finals' : stage === '3P' ? '3rd Place Play-off' : 'Final';
-              if (sortedStageMatches.length === 0 && stage !== 'F' && stage !== '3P') return null;
-
-              return (
-                <div key={stage} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: stage === 'F' ? COLORS.gold : stage === '3P' ? '#CD7F32' : '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, textAlign: 'center' }}>
-                    {stageLabel}
-                  </div>
-                  {sortedStageMatches.length === 0 ? (
-                    <div className="kcard" style={{ padding: 20, textAlign: 'center', color: '#555', fontSize: '0.82rem', border: stage === 'F' ? `2px solid ${COLORS.gold}` : stage === '3P' ? '2px solid #CD7F32' : undefined }}>
-                      Waiting for results…
-                    </div>
-                  ) : (
-                    sortedStageMatches.map(m => {
-                      const home = teamMap[m.home_team_id];
-                      const away = teamMap[m.away_team_id];
-                      const isLive = m.status === 'live';
-                      const hasPen = m.played && m.home_penalties != null && m.away_penalties != null;
-
-                      return (
-                        <div key={m.id} className="kcard tappable" style={{ marginBottom: 8,
-                            border: isLive ? '2px solid #00C853' : stage === 'F' ? `2px solid ${COLORS.gold}` : stage === '3P' ? '2px solid #CD7F32' : undefined,
-                            background: isLive ? 'rgba(0,200,83,0.04)' : undefined }}
-                          onClick={() => navigate('match', { matchId: m.id })}>
-                          <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: '0.65rem', fontWeight: 700, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
-                            color: isLive ? '#00C853' : '#666' }}>
-                            {isLive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block', animation: 'pulse 1s infinite' }} />}
-                            {isLive ? <span style={{ fontWeight: 900, letterSpacing: 1 }}>LIVE NOW</span> : <span>{m.label || stage}</span>}
-                            {!isLive && m.ground && <span>· Ground: {m.ground}</span>}
-                            {!isLive && m.match_time && <span>· Time: {m.match_time.slice(0, 5)}</span>}
-                          </div>
-                          <div className="match-card" style={{ display: 'flex', alignItems: 'center', padding: '12px 14px' }}>
-                            <div className="match-team-col" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                              <TeamLogo team={home} size={40} />
-                              <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{home?.name || m.home_source || 'TBD'}</span>
-                            </div>
-                            <div style={{ margin: '0 12px', textAlign: 'center' }}>
-                              <div className={`match-score-box ${m.played ? 'played' : isLive ? 'live' : 'upcoming'}`}>
-                                {m.played ? `${m.home_score} - ${m.away_score}` : isLive ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : 'VS'}
-                              </div>
-                              {hasPen && (
-                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: COLORS.gold, marginTop: 3 }}>
-                                  ({m.home_penalties}-{m.away_penalties} pen)
-                                </div>
-                              )}
-                            </div>
-                            <div className="match-team-col away" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
-                              <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{away?.name || m.away_source || 'TBD'}</span>
-                              <TeamLogo team={away} size={40} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+          const BracketCard = ({ match, label, accent }) => {
+            const home = match ? teamMap[match.home_team_id] : null;
+            const away = match ? teamMap[match.away_team_id] : null;
+            const isLive = match?.status === 'live';
+            const hasPen = match?.played && match.home_penalties != null && match.away_penalties != null;
+            return (
+              <div className={`kcard ${match ? 'tappable' : ''}`} style={{ padding: 0, overflow: 'hidden', width: 210, flexShrink: 0,
+                  cursor: match ? 'pointer' : 'default', border: isLive ? '2px solid #00C853' : accent ? `2px solid ${accent}` : undefined }}
+                onClick={() => match && navigate('match', { matchId: match.id })}>
+                <div style={{ padding: '5px 10px', fontSize: '0.6rem', fontWeight: 700, color: isLive ? '#00C853' : '#666',
+                  textAlign: 'center', borderBottom: '1px solid var(--border)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {isLive ? '● LIVE NOW' : label}
                 </div>
-              );
-            })}
-
-            {/* Show bracket sources if no knockout matches yet */}
-            {matches.filter(m => ['QF','SF','3P','F'].includes(m.stage)).length === 0 && (
-              <div className="kcard" style={{ padding: 16 }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#888', marginBottom: 12 }}>Bracket Seeding</div>
-                {[
-                  ['QF1', 'A1 vs B2'], ['QF2', 'B1 vs A2'],
-                  ['QF3', 'C1 vs D2'], ['QF4', 'D1 vs C2'],
-                ].map(([label, desc]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
-                    <span style={{ fontWeight: 800, color: COLORS.gold }}>{label}</span>
-                    <span style={{ color: '#888' }}>{desc}</span>
+                {BracketRow(home, match?.home_source, match ? (match.played || isLive ? (match.home_score ?? 0) : '-') : '', match?.played && match.winner_team_id === match.home_team_id)}
+                <div style={{ borderTop: '1px solid var(--border)' }} />
+                {BracketRow(away, match?.away_source, match ? (match.played || isLive ? (match.away_score ?? 0) : '-') : '', match?.played && match.winner_team_id === match.away_team_id)}
+                {hasPen && (
+                  <div style={{ fontSize: '0.58rem', fontWeight: 800, color: COLORS.gold, textAlign: 'center', padding: '3px 0', borderTop: '1px solid var(--border)' }}>
+                    Pens: {match.home_penalties}-{match.away_penalties}
                   </div>
-                ))}
-                <div style={{ marginTop: 12, fontSize: '0.72rem', color: '#555', textAlign: 'center' }}>
-                  SF1: QF1 W vs QF2 W (A/B) · SF2: QF3 W vs QF4 W (C/D) · 3rd Place: SF1 L vs SF2 L · Final: SF1 W vs SF2 W
+                )}
+              </div>
+            );
+          };
+
+          const Connectors = ({ count }) => (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', boxSizing: 'border-box', paddingTop: 28, width: 22, flexShrink: 0, alignSelf: 'stretch' }}>
+              {Array.from({ length: count }).map((_, i) => <div key={i} className="bkt-connector" />)}
+            </div>
+          );
+
+          const ColTitle = ({ children, color }) => (
+            <div style={{ textAlign: 'center', fontSize: '0.66rem', fontWeight: 800, color: color || '#888',
+              textTransform: 'uppercase', letterSpacing: 1, height: 16, marginBottom: 12 }}>{children}</div>
+          );
+
+          return (
+            <div className="animate-fade">
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>Championship Bracket</div>
+                <div style={{ fontSize: '0.72rem', color: '#666', marginTop: 2 }}>Knockout stage — single elimination</div>
+              </div>
+
+              <div style={{ overflowX: 'auto', margin: '0 -16px', padding: '0 16px 8px' }}>
+                <div style={{ display: 'flex', alignItems: 'stretch', minWidth: 720 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <ColTitle>Quarter-Finals</ColTitle>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-around', gap: 14 }}>
+                      {qf.map((m, i) => <BracketCard key={i} match={m} label={`QF${i + 1}`} />)}
+                    </div>
+                  </div>
+
+                  <Connectors count={2} />
+
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <ColTitle>Semi-Finals</ColTitle>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-around', gap: 14 }}>
+                      {sf.map((m, i) => <BracketCard key={i} match={m} label={`SF${i + 1}`} />)}
+                    </div>
+                  </div>
+
+                  <Connectors count={1} />
+
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <ColTitle color={COLORS.gold}>Grand Final</ColTitle>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <BracketCard match={finalMatch} label="Final" accent={COLORS.gold} />
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* 3rd Place */}
+              <div style={{ marginTop: 20, maxWidth: 220, marginLeft: 'auto', marginRight: 'auto' }}>
+                <ColTitle color="#CD7F32">3rd Place Play-off</ColTitle>
+                <BracketCard match={thirdMatch} label="3rd Place" accent="#CD7F32" />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* AWARDS TAB */}
         {subTab === 'awards' && (() => {
