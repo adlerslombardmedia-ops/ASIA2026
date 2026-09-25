@@ -18,12 +18,13 @@ export const EVENT_DATE_LABEL = '27 September 2026';
 export const ADLERS_INSTAGRAM_URL = 'https://www.instagram.com/adlerslombardfc/';
 
 export const DEFAULT_SPONSORS = [
-  { id: 'bloom',    name: 'Bloom International', logo_url: '/images/sponsors/bloom.png',    link_url: 'https://www.bloominternational.org', tier: 1 },
-  { id: 'arcon',    name: 'Arcon',               logo_url: '/images/sponsors/arcon.png',    link_url: 'https://www.instagram.com/arcon.biz/', tier: 1 },
-  { id: 'finetrip', name: 'A Fine Trip',         logo_url: '/images/sponsors/finetrip.png', link_url: 'https://www.instagram.com/afinetrip/', tier: 1 },
-  { id: 'diamond',  name: 'Diamond Brescia',     logo_url: '/images/sponsors/diamond.png',  link_url: 'https://www.instagram.com/diamondbrescia', tier: 2 },
-  { id: 'adpoli',   name: 'Adipoli',             logo_url: '/images/sponsors/adpoli.png',   link_url: 'https://www.instagram.com/adipoli.zone/', tier: 2 },
-  { id: 'hiz',      name: 'Hiz Sports',          logo_url: '/images/sponsors/hiz.png',      link_url: 'https://www.instagram.com/hizsports', tier: 2 },
+  { id: 'bloom',      name: 'Bloom International', logo_url: '/images/sponsors/bloom.png',      link_url: 'https://www.bloominternational.org', tier: 1 },
+  { id: 'diamond',    name: 'Diamond Brescia',     logo_url: '/images/sponsors/diamond.png',    link_url: 'https://www.instagram.com/diamondbrescia', tier: 2 },
+  { id: 'tripodope',  name: 'Tripodope',           logo_url: '/images/sponsors/tripodope.png',  link_url: null, tier: 2 },
+  { id: 'flymart',    name: 'Flymart',             logo_url: '/images/sponsors/flymart.png',    link_url: null, tier: 2 },
+  { id: 'arcon',      name: 'Arcon',               logo_url: '/images/sponsors/arcon.png',      link_url: 'https://www.instagram.com/arcon.biz/', tier: 2 },
+  { id: 'finetrip',   name: 'A Fine Trip',         logo_url: '/images/sponsors/finetrip.png',   link_url: 'https://www.instagram.com/afinetrip/', tier: 2 },
+  { id: 'hiz',        name: 'Hiz Sports',          logo_url: '/images/sponsors/hiz.png',        link_url: 'https://www.instagram.com/hizsports', tier: 2 },
 ];
 export const SPONSOR_LOGOS = DEFAULT_SPONSORS.map(s => ({ name: s.name, url: s.logo_url }));
 
