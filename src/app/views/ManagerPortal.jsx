@@ -116,7 +116,7 @@ function SquadTab({ session, myPlayers }) {
     manager: myPlayers.filter(p => p.player_type === 'manager').length,
   };
 
-  const isDeadlinePast = new Date() > new Date('2026-05-31T23:59:59');
+  const isDeadlinePast = new Date() > new Date('2026-09-26T23:59:59');
 
   const openAdd = () => {
     setForm({ name: '', number: '', position: 'GK', category: 'Keralite', player_type: 'player' });
@@ -265,7 +265,7 @@ function SquadTab({ session, myPlayers }) {
       {regOpen && (
         <div style={{ background: isDeadlinePast ? 'rgba(255,61,87,0.08)' : 'rgba(255,212,0,0.06)', border: `1px solid ${isDeadlinePast ? 'rgba(255,61,87,0.3)' : `${GOLD}35`}`, borderRadius: 10, padding: '11px 14px', marginBottom: 14 }}>
           <div style={{ fontWeight: 800, fontSize: '0.78rem', color: isDeadlinePast ? RED : GOLD }}>
-            {isDeadlinePast ? '⚠️ Submission deadline has passed' : '📅 Deadline: 31st May 2026'}
+            {isDeadlinePast ? '⚠️ Submission deadline has passed' : '📅 Deadline: 26th September 2026'}
           </div>
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: 2 }}>
             Please complete your squad list accurately before the deadline.

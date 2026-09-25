@@ -1417,7 +1417,7 @@ function SquadsPanel({ teams, players }) {
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ fontWeight: 900, fontSize: '1rem', marginBottom: 4 }}>Squad Submissions</h3>
         <p style={{ color: '#888', fontSize: '0.78rem', margin: 0 }}>
-          View the squad registered by each team's manager. Deadline: 31st May 2026.
+          View the squad registered by each team's manager. Deadline: 26th September 2026.
         </p>
       </div>
 
