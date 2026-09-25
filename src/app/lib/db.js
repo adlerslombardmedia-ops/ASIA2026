@@ -694,16 +694,14 @@ export async function checkAndAutoAdvance() {
     await patchMatch(sfId, updates);
   }
 
-  // SF results → Final slots + 3rd place slots (losers)
-  for (const [sfId, finalSide, thirdSide] of [
-    ['sf1', 'home_team_id', 'home_team_id'],
-    ['sf2', 'away_team_id', 'away_team_id'],
+  // SF results → Final slots
+  for (const [sfId, finalSide] of [
+    ['sf1', 'home_team_id'],
+    ['sf2', 'away_team_id'],
   ]) {
     const sfM = matches.find(m => m.id === sfId);
     if (sfM?.played && sfM?.winner_team_id) {
       await patchMatch('final', { [finalSide]: sfM.winner_team_id });
-      const loserId = sfM.winner_team_id === sfM.home_team_id ? sfM.away_team_id : sfM.home_team_id;
-      if (loserId) await patchMatch('third', { [thirdSide]: loserId });
     }
   }
 }

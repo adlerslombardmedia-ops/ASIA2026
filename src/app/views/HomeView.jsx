@@ -197,7 +197,6 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
           const qf = ['qf1', 'qf2', 'qf3', 'qf4'].map(byId);
           const sf = ['sf1', 'sf2'].map(byId);
           const finalMatch = byId('final');
-          const thirdMatch = byId('third');
 
           const BracketRow = (team, sourceLabel, score, isWinner) => (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 10px',
@@ -283,12 +282,6 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* 3rd Place */}
-              <div style={{ marginTop: 20, maxWidth: 220, marginLeft: 'auto', marginRight: 'auto' }}>
-                <ColTitle color="#CD7F32">3rd Place Play-off</ColTitle>
-                <BracketCard match={thirdMatch} label="3rd Place" accent="#CD7F32" />
               </div>
             </div>
           );
