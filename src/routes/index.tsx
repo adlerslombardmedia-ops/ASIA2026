@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import logoAsset from "@/assets/asia-cup-logo.png.asset.json";
+
+const LOGO_URL = "/images/asia-cup-2026-logo.png";
 
 // The tournament app is a client-side, realtime experience (auth, live
 // scores, admin tools), so it renders only in the browser.
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/")({
 function Splash() {
   return (
     <div className="splash">
-      <img src={logoAsset.url} alt="Asia Cup 2026" className="splash-logo" />
+      <img src={LOGO_URL} alt="Asia Cup 2026" className="splash-logo" />
       <div className="splash-bar" />
     </div>
   );

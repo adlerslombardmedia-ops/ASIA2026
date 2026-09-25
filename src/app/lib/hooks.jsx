@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabase';
 import * as db from '../lib/db';
-import logoAsset from '../../assets/asia-cup-logo.png.asset.json';
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 export const COLORS = {
@@ -11,7 +10,7 @@ export const COLORS = {
   italyGreen: '#009246', italyRed: '#CE2B37',
 };
 
-export const LOGO_URL = logoAsset.url;
+export const LOGO_URL = '/images/asia-cup-2026-logo.png';
 export const ADLERS_CREST_URL = '/images/adlers-lombard-crest.svg';
 export const VENUE_NAME = "Campo Sportivo Comunale 'A. Villa'";
 export const VENUE_MAP_URL = 'https://maps.app.goo.gl/D2h51NAmWrZGMYiz7';
