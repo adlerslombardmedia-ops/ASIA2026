@@ -3,8 +3,7 @@ import Cropper from 'react-easy-crop';
 import { supabase } from '../supabase';
 import SponsorsPanel from '../components/SponsorsPanel';
 import * as db from '../lib/db';
-import { toast, signIn, signOut, TeamLogo, COLORS, DEFAULT_TEAMS } from '../lib/hooks';
-// ShotMapRecorder and PossessionTracker now live in AdminMatchPage
+import { toast, signIn, signOut, TeamLogo, COLORS } from '../lib/hooks';
 
 // ─── CROP HELPER ────────────────────────────────────────────────────────────
 const createImage = (url) =>
@@ -50,7 +49,7 @@ const AWARD_CATEGORIES = [
 ];
 
 export default function AdminView({ data, navigate }) {
-  const { user, teams, players, groups, groupAssignments, matches, events, shots, possession, teamMap, awards, reload } = data;
+  const { user, teams, players, groups, groupAssignments, matches, events, teamMap, awards, reload } = data;
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [loginErr, setLoginErr] = useState('');
@@ -64,6 +63,9 @@ export default function AdminView({ data, navigate }) {
   const [pStarter, setPStarter] = useState(false);
   
   const [busy, setBusy] = useState(false);
+  const [newTeam, setNewTeam] = useState({ name: '', short_name: '', insta_page: '', website_url: '' });
+  const [dragMatchId, setDragMatchId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
   const [drawActiveTeamId, setDrawActiveTeamId] = useState(null);
   // match analytics now handled in AdminMatchPage (navigate per-match)
   const [importReport, setImportReport] = useState(null); // null | { imported, errors[], warnings[] }
@@ -106,16 +108,6 @@ export default function AdminView({ data, navigate }) {
   const totalGoals = matches.filter(m => m.played).reduce((s, m) => s + (m.home_score || 0) + (m.away_score || 0), 0);
   const hasGroups = Object.values(groups).some(g => g.length > 0);
 
-  const seedTeams = async () => {
-    setBusy(true);
-    try {
-      for (const t of DEFAULT_TEAMS) await db.upsertTeam(t);
-      await reload();
-      toast(`${DEFAULT_TEAMS.length} teams seeded successfully!`, 'success');
-    } catch (e) { toast(e.message, 'error'); }
-    setBusy(false);
-  };
-
   const autoDraw = async () => {
     setBusy(true);
     try {
@@ -149,71 +141,6 @@ export default function AdminView({ data, navigate }) {
       await db.upsertMatches([...fixtures, ...ko]);
       await reload();
       toast(`${fixtures.length} group matches and ${ko.length} tournament bracket matches generated!`, 'success');
-    } catch (e) { toast(e.message, 'error'); }
-    setBusy(false);
-  };
-
-  const importSchedule = async () => {
-    if (!window.confirm('This will replace ALL existing matches with the official schedule (47 matches with time & ground). Continue?')) return;
-    setBusy(true);
-    try {
-      const GROUP_MATCHES = [
-        { id:'grp_a_m1',  stage:'group', group_letter:'A', match_number:1,  home_team_id:'botafogo_fc_malta',     away_team_id:'minnal_bayern_titans',  played:false, match_time:'08:00', ground:'1' },
-        { id:'grp_b_m2',  stage:'group', group_letter:'B', match_number:2,  home_team_id:'kombans_fc',            away_team_id:'hamburg_blasters_hawks',              played:false, match_time:'08:00', ground:'2' },
-        { id:'grp_c_m3',  stage:'group', group_letter:'C', match_number:3,  home_team_id:'edex_kings_kerala',     away_team_id:'inter_freiburg_fc',     played:false, match_time:'08:20', ground:'1' },
-        { id:'grp_d_m4',  stage:'group', group_letter:'D', match_number:4,  home_team_id:'hamburg_blasters',      away_team_id:'minnal_bayern_knights', played:false, match_time:'08:20', ground:'2' },
-        { id:'grp_a_m5',  stage:'group', group_letter:'A', match_number:5,  home_team_id:'monsoon_fc',            away_team_id:'kta_paris',             played:false, match_time:'08:40', ground:'1' },
-        { id:'grp_b_m6',  stage:'group', group_letter:'B', match_number:6,  home_team_id:'frankfurter_fc_kerala', away_team_id:'northern_knights_fc',  played:false, match_time:'08:40', ground:'2' },
-        { id:'grp_c_m7',  stage:'group', group_letter:'C', match_number:7,  home_team_id:'club_de_swat_malta',    away_team_id:'sporting_mallus',      played:false, match_time:'09:00', ground:'1' },
-        { id:'grp_d_m8',  stage:'group', group_letter:'D', match_number:8,  home_team_id:'adlers_lombard_b',      away_team_id:'dresden_drifters_fc',  played:false, match_time:'09:00', ground:'2' },
-        { id:'grp_a_m9',  stage:'group', group_letter:'A', match_number:9,  home_team_id:'adlers_lombard_a',      away_team_id:'botafogo_fc_malta',     played:false, match_time:'09:20', ground:'1' },
-        { id:'grp_b_m10', stage:'group', group_letter:'B', match_number:10, home_team_id:'kombans_fc',            away_team_id:'bogey_fc',played:false, match_time:'09:20', ground:'2' },
-        { id:'grp_c_m11', stage:'group', group_letter:'C', match_number:11, home_team_id:'edex_kings_kerala',     away_team_id:'marburg_fc_kerala',     played:false, match_time:'09:40', ground:'1' },
-        { id:'grp_d_m12', stage:'group', group_letter:'D', match_number:12, home_team_id:'hamburg_blasters',      away_team_id:'slovak_titans_fc',      played:false, match_time:'09:40', ground:'2' },
-        { id:'grp_a_m13', stage:'group', group_letter:'A', match_number:13, home_team_id:'monsoon_fc',            away_team_id:'minnal_bayern_titans',  played:false, match_time:'10:00', ground:'1' },
-        { id:'grp_b_m14', stage:'group', group_letter:'B', match_number:14, home_team_id:'frankfurter_fc_kerala', away_team_id:'hamburg_blasters_hawks',             played:false, match_time:'10:00', ground:'2' },
-        { id:'grp_c_m15', stage:'group', group_letter:'C', match_number:15, home_team_id:'sporting_mallus',       away_team_id:'inter_freiburg_fc',    played:false, match_time:'10:20', ground:'1' },
-        { id:'grp_d_m16', stage:'group', group_letter:'D', match_number:16, home_team_id:'adlers_lombard_b',      away_team_id:'minnal_bayern_knights',played:false, match_time:'10:20', ground:'2' },
-        { id:'grp_a_m17', stage:'group', group_letter:'A', match_number:17, home_team_id:'adlers_lombard_a',      away_team_id:'kta_paris',            played:false, match_time:'10:40', ground:'1' },
-        { id:'grp_b_m18', stage:'group', group_letter:'B', match_number:18, home_team_id:'northern_knights_fc',   away_team_id:'bogey_fc',played:false, match_time:'10:40', ground:'2' },
-        { id:'grp_c_m19', stage:'group', group_letter:'C', match_number:19, home_team_id:'club_de_swat_malta',    away_team_id:'marburg_fc_kerala',    played:false, match_time:'11:00', ground:'1' },
-        { id:'grp_d_m20', stage:'group', group_letter:'D', match_number:20, home_team_id:'dresden_drifters_fc',   away_team_id:'slovak_titans_fc',     played:false, match_time:'11:00', ground:'2' },
-        { id:'grp_a_m21', stage:'group', group_letter:'A', match_number:21, home_team_id:'monsoon_fc',            away_team_id:'botafogo_fc_malta',     played:false, match_time:'11:20', ground:'1' },
-        { id:'grp_b_m22', stage:'group', group_letter:'B', match_number:22, home_team_id:'kombans_fc',            away_team_id:'frankfurter_fc_kerala', played:false, match_time:'11:20', ground:'2' },
-        { id:'grp_c_m23', stage:'group', group_letter:'C', match_number:23, home_team_id:'sporting_mallus',       away_team_id:'edex_kings_kerala',    played:false, match_time:'11:40', ground:'1' },
-        { id:'grp_d_m24', stage:'group', group_letter:'D', match_number:24, home_team_id:'adlers_lombard_b',      away_team_id:'hamburg_blasters',     played:false, match_time:'11:40', ground:'2' },
-        { id:'grp_a_m25', stage:'group', group_letter:'A', match_number:25, home_team_id:'adlers_lombard_a',      away_team_id:'minnal_bayern_titans', played:false, match_time:'12:00', ground:'1' },
-        { id:'grp_b_m26', stage:'group', group_letter:'B', match_number:26, home_team_id:'hamburg_blasters_hawks',              away_team_id:'northern_knights_fc',  played:false, match_time:'12:00', ground:'2' },
-        { id:'grp_c_m27', stage:'group', group_letter:'C', match_number:27, home_team_id:'club_de_swat_malta',    away_team_id:'inter_freiburg_fc',    played:false, match_time:'12:20', ground:'1' },
-        { id:'grp_d_m28', stage:'group', group_letter:'D', match_number:28, home_team_id:'minnal_bayern_knights', away_team_id:'dresden_drifters_fc',  played:false, match_time:'12:20', ground:'2' },
-        { id:'grp_a_m29', stage:'group', group_letter:'A', match_number:29, home_team_id:'kta_paris',             away_team_id:'botafogo_fc_malta',    played:false, match_time:'12:40', ground:'1' },
-        { id:'grp_b_m30', stage:'group', group_letter:'B', match_number:30, home_team_id:'frankfurter_fc_kerala', away_team_id:'bogey_fc',played:false, match_time:'12:40', ground:'2' },
-        { id:'grp_c_m31', stage:'group', group_letter:'C', match_number:31, home_team_id:'sporting_mallus',       away_team_id:'marburg_fc_kerala',    played:false, match_time:'13:00', ground:'1' },
-        { id:'grp_d_m32', stage:'group', group_letter:'D', match_number:32, home_team_id:'adlers_lombard_b',      away_team_id:'slovak_titans_fc',     played:false, match_time:'13:00', ground:'2' },
-        { id:'grp_a_m33', stage:'group', group_letter:'A', match_number:33, home_team_id:'adlers_lombard_a',      away_team_id:'monsoon_fc',           played:false, match_time:'13:20', ground:'1' },
-        { id:'grp_b_m34', stage:'group', group_letter:'B', match_number:34, home_team_id:'kombans_fc',            away_team_id:'northern_knights_fc',  played:false, match_time:'13:20', ground:'2' },
-        { id:'grp_c_m35', stage:'group', group_letter:'C', match_number:35, home_team_id:'club_de_swat_malta',    away_team_id:'edex_kings_kerala',    played:false, match_time:'13:40', ground:'1' },
-        { id:'grp_d_m36', stage:'group', group_letter:'D', match_number:36, home_team_id:'hamburg_blasters',      away_team_id:'dresden_drifters_fc',  played:false, match_time:'13:40', ground:'2' },
-        { id:'grp_a_m37', stage:'group', group_letter:'A', match_number:37, home_team_id:'kta_paris',             away_team_id:'minnal_bayern_titans', played:false, match_time:'14:00', ground:'1' },
-        { id:'grp_b_m38', stage:'group', group_letter:'B', match_number:38, home_team_id:'hamburg_blasters_hawks',              away_team_id:'bogey_fc',played:false, match_time:'14:00', ground:'2' },
-        { id:'grp_c_m39', stage:'group', group_letter:'C', match_number:39, home_team_id:'marburg_fc_kerala',     away_team_id:'inter_freiburg_fc',    played:false, match_time:'14:20', ground:'1' },
-        { id:'grp_d_m40', stage:'group', group_letter:'D', match_number:40, home_team_id:'minnal_bayern_knights', away_team_id:'slovak_titans_fc',     played:false, match_time:'14:20', ground:'2' },
-      ];
-      const KO_MATCHES = [
-        { id:'qf1',   stage:'QF', label:'Quarter-Final 1', home_source:'A1',       away_source:'B2',       match_number:41, played:false, match_time:'15:00', ground:'1' },
-        { id:'qf2',   stage:'QF', label:'Quarter-Final 2', home_source:'B1',       away_source:'A2',       match_number:42, played:false, match_time:'15:00', ground:'2' },
-        { id:'qf3',   stage:'QF', label:'Quarter-Final 3', home_source:'C1',       away_source:'D2',       match_number:43, played:false, match_time:'15:30', ground:'1' },
-        { id:'qf4',   stage:'QF', label:'Quarter-Final 4', home_source:'D1',       away_source:'C2',       match_number:44, played:false, match_time:'15:30', ground:'2' },
-        { id:'sf1',   stage:'SF', label:'Semi-Final 1',    home_source:'QF1 Winner',away_source:'QF2 Winner',match_number:45,played:false, match_time:'16:00', ground:'1' },
-        { id:'sf2',   stage:'SF', label:'Semi-Final 2',    home_source:'QF3 Winner',away_source:'QF4 Winner',match_number:46,played:false, match_time:'16:00', ground:'2' },
-        { id:'third', stage:'3P', label:'3rd Place Play-off', home_source:'SF1 Loser', away_source:'SF2 Loser', match_number:47, played:false, match_time:'17:00', ground:'2' },
-        { id:'final', stage:'F',  label:'Final',              home_source:'SF1 Winner',away_source:'SF2 Winner',match_number:48, played:false, match_time:'17:20', ground:'1' },
-      ];
-      await db.deleteAllMatches();
-      await db.upsertMatches(GROUP_MATCHES);
-      await db.upsertMatches(KO_MATCHES);
-      await reload();
-      toast('48 matches imported from official schedule!', 'success');
     } catch (e) { toast(e.message, 'error'); }
     setBusy(false);
   };
@@ -348,6 +275,66 @@ export default function AdminView({ data, navigate }) {
       await reload();
       toast('Colors updated!', 'success');
     } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const addTeam = async () => {
+    if (!newTeam.name.trim()) { toast('Enter a team name', 'error'); return; }
+    const id = newTeam.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+      + '_' + Math.random().toString(36).slice(2, 6);
+    const short = (newTeam.short_name.trim() || newTeam.name.trim()).slice(0, 3).toUpperCase();
+    setBusy(true);
+    try {
+      await db.upsertTeam({
+        id, name: newTeam.name.trim(), short_name: short,
+        insta_page: newTeam.insta_page.trim() || null,
+        website_url: newTeam.website_url.trim() || null,
+      });
+      setNewTeam({ name: '', short_name: '', insta_page: '', website_url: '' });
+      await reload();
+      toast('Team added!', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    setBusy(false);
+  };
+
+  const removeTeam = async (t) => {
+    if (!confirm(`Remove ${t.name}? This also deletes any matches involving this team.`)) return;
+    setBusy(true);
+    try {
+      await db.deleteTeam(t.id);
+      await reload();
+      toast('Team removed', 'info');
+    } catch (e) { toast(e.message, 'error'); }
+    setBusy(false);
+  };
+
+  const swapMatchSlots = async (idA, idB) => {
+    if (!idA || !idB || idA === idB) return;
+    setBusy(true);
+    try {
+      await db.swapMatchSchedule(idA, idB, matches);
+      await reload();
+      toast('Match order swapped!', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+    setBusy(false);
+  };
+
+  const updateMatchTime = async (matchId, field, value) => {
+    try {
+      await db.updateMatchSchedule(matchId, { [field]: value || null });
+      await reload();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const removeAllTeams = async () => {
+    const typed = prompt(`Type REMOVE to confirm. This deletes ALL ${teams.length} teams, their players, group assignments and matches.`);
+    if (typed?.trim().toUpperCase() !== 'REMOVE') return;
+    setBusy(true);
+    try {
+      await db.deleteAllTeams();
+      await reload();
+      toast('All teams removed', 'info');
+    } catch (e) { toast(e.message, 'error'); }
+    setBusy(false);
   };
 
   const addPlayer = async () => {
@@ -536,32 +523,6 @@ export default function AdminView({ data, navigate }) {
       toast('Failed to parse pasted data — check the format', 'error');
     }
     setBusy(false);
-  };
-
-  // ── Shot handlers ─────────────────────────────────────────────────────────
-  const handleSaveShot = async (shotData) => {
-    try {
-      await db.insertShot(shotData);
-      await reload();
-      toast('Shot recorded!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  };
-
-  const handleDeleteShot = async (shotId) => {
-    try {
-      await db.deleteShot(shotId);
-      await reload();
-      toast('Shot removed', 'info');
-    } catch (e) { toast(e.message, 'error'); }
-  };
-
-  // ── Possession handler ────────────────────────────────────────────────────
-  const handleSavePossession = async (matchId, homeSeconds, awaySeconds) => {
-    try {
-      await db.upsertPossession(matchId, homeSeconds, awaySeconds);
-      await reload();
-      toast('Possession saved!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
   };
 
   // ── Match status handlers ─────────────────────────────────────────────────
@@ -812,19 +773,13 @@ export default function AdminView({ data, navigate }) {
               {busy ? 'Syncing…' : '⚡ Sync Bracket from Standings'}
             </button>
 
-            {teams.length < 20 && (
-              <button className="btn btn-gold btn-block" style={{ marginTop: 12 }} onClick={seedTeams} disabled={busy}>
-                {busy ? 'Seeding…' : 'Seed 20 Default Teams'}
-              </button>
-            )}
-
             {/* Super Admin Database Reset Option */}
             {user?.email === 'precious@keff.com' && (
               <div className="kcard animate-fade" style={{ padding: 16, marginTop: 12, border: `2px solid ${COLORS.red}` }}>
                 <div style={{ fontWeight: 800, marginBottom: 4, fontSize: '0.85rem', color: COLORS.red }}>Reset Database (Super Admin)</div>
-                <p style={{ fontSize: '0.68rem', color: '#666', marginBottom: 12 }}>Warning: This will delete all players, group assignments, matches, tactics, and logged match events. The 20 default teams will remain.</p>
+                <p style={{ fontSize: '0.68rem', color: '#666', marginBottom: 12 }}>Warning: This will delete all players, group assignments, matches, tactics, and logged match events. Teams will remain.</p>
                 <button className="btn btn-danger btn-block" onClick={async () => {
-                  const typed = prompt('Type RESET to confirm. This deletes all matches, players, groups, shots and events. Teams are kept.');
+                  const typed = prompt('Type RESET to confirm. This deletes all matches, players, groups and events. Teams are kept.');
                   if (typed?.trim().toUpperCase() !== 'RESET') return;
                   setBusy(true);
                   try {
@@ -855,14 +810,11 @@ export default function AdminView({ data, navigate }) {
           ) : (
           <div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-              <button className="btn btn-gold" onClick={autoDraw} disabled={busy || teams.length < 20}>
+              <button className="btn btn-gold" onClick={autoDraw} disabled={busy || teams.length < 4}>
                 {busy ? 'Processing…' : 'Shuffle Auto Draw'}
               </button>
               <button className="btn btn-success" onClick={genFixtures} disabled={busy || !hasGroups}>
                 Generate Match Fixtures
-              </button>
-              <button className="btn btn-gold" onClick={importSchedule} disabled={busy}>
-                Import Official Schedule
               </button>
             </div>
 
@@ -962,27 +914,36 @@ export default function AdminView({ data, navigate }) {
                 <div style={{ fontSize: '0.78rem', marginTop: 4 }}>Complete the group draw to generate fixtures first.</div>
               </div>
             ) : (
-              (() => {
-                const sorted = [...matches].sort((a, b) => (a.match_number || 0) - (b.match_number || 0));
+              <>
+                <div style={{ fontSize: '0.68rem', color: '#666', marginBottom: 10, lineHeight: 1.5 }}>
+                  Drag a card by its <strong style={{ color: '#888' }}>⠿ handle</strong> onto another to swap their match number, time and ground. Edit time/ground directly in the fields.
+                </div>
+                {(() => {
+                  const sorted = [...matches].sort((a, b) => (a.match_number || 0) - (b.match_number || 0));
 
-                return sorted.map(m => {
-                  const home = teamMap[m.home_team_id];
-                  const away = teamMap[m.away_team_id];
+                  return sorted.map(m => {
+                    const home = teamMap[m.home_team_id];
+                    const away = teamMap[m.away_team_id];
 
-                  return (
-                    <React.Fragment key={m.id}>
-                      {/* Clickable match card → navigates to AdminMatchPage */}
-                      <div className="kcard tappable" style={{ marginBottom: 10, padding: '12px 14px',
-                        border: m.stage === 'F' ? `2px solid ${COLORS.gold}40` : undefined,
-                        cursor: 'pointer' }}
-                        onClick={() => navigate('adminMatch', { matchId: m.id })}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#666' }}>
-                            {m.stage === 'group' ? `Match ${m.match_number} · Group ${m.group_letter}` : (m.label || m.stage)}
-                            {m.match_time && <span style={{ marginLeft: 6 }}>· {m.match_time.slice(0,5)}</span>}
-                            {m.ground && <span style={{ marginLeft: 6 }}>· Ground {m.ground}</span>}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    return (
+                      <div key={m.id} className="kcard" style={{ marginBottom: 10, padding: '12px 14px',
+                        border: dragOverId === m.id ? `2px dashed ${COLORS.gold}` : (m.stage === 'F' ? `2px solid ${COLORS.gold}40` : undefined) }}
+                        onDragOver={e => { e.preventDefault(); if (dragOverId !== m.id) setDragOverId(m.id); }}
+                        onDragLeave={() => setDragOverId(id => (id === m.id ? null : id))}
+                        onDrop={e => { e.preventDefault(); setDragOverId(null); swapMatchSlots(dragMatchId, m.id); setDragMatchId(null); }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <span
+                              draggable
+                              onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragMatchId(m.id); }}
+                              onDragEnd={() => { setDragMatchId(null); setDragOverId(null); }}
+                              title="Drag to reorder"
+                              style={{ cursor: 'grab', color: '#666', fontSize: '1rem', lineHeight: 1, padding: '2px 4px', flexShrink: 0, userSelect: 'none' }}>⠿</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#666' }} className="truncate">
+                              {m.stage === 'group' ? `Match ${m.match_number} · Group ${m.group_letter}` : `Match ${m.match_number} · ${m.label || m.stage}`}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             {m.status === 'live' && (
                               <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.65rem', fontWeight: 800, color: '#00C853' }}>
                                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block', animation: 'pulse 1s infinite' }} />
@@ -992,10 +953,11 @@ export default function AdminView({ data, navigate }) {
                             <span className={`pill ${m.played ? 'pill-green' : 'pill-muted'}`}>
                               {m.status === 'finished' ? 'Finished' : m.played ? 'Played' : 'Upcoming'}
                             </span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                        <div className="tappable" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                          onClick={() => navigate('adminMatch', { matchId: m.id })}>
                           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                             <TeamLogo team={home} size={26} />
                             <span style={{ fontWeight: 700, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{home?.name || m.home_source || '?'}</span>
@@ -1008,11 +970,26 @@ export default function AdminView({ data, navigate }) {
                             <TeamLogo team={away} size={26} />
                           </div>
                         </div>
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                          <label style={{ flex: 1, fontSize: '0.6rem', fontWeight: 800, color: '#666', textTransform: 'uppercase' }}>
+                            Time
+                            <input type="time" defaultValue={m.match_time ? m.match_time.slice(0,5) : ''}
+                              onBlur={e => { if (e.target.value !== (m.match_time || '').slice(0,5)) updateMatchTime(m.id, 'match_time', e.target.value); }}
+                              style={{ width: '100%', marginTop: 3, padding: '5px 6px', fontSize: '0.72rem' }} />
+                          </label>
+                          <label style={{ flex: 1, fontSize: '0.6rem', fontWeight: 800, color: '#666', textTransform: 'uppercase' }}>
+                            Ground
+                            <input type="text" defaultValue={m.ground || ''} placeholder="1"
+                              onBlur={e => { if (e.target.value !== (m.ground || '')) updateMatchTime(m.id, 'ground', e.target.value); }}
+                              style={{ width: '100%', marginTop: 3, padding: '5px 6px', fontSize: '0.72rem' }} />
+                          </label>
+                        </div>
                       </div>
-                    </React.Fragment>
-                  );
-                });
-              })()
+                    );
+                  });
+                })()}
+              </>
             )}
           </div>
         )}
@@ -1020,6 +997,31 @@ export default function AdminView({ data, navigate }) {
         {/* TEAMS & LOGOS */}
         {tab === 'teams' && (
           <div>
+            {/* Add New Team */}
+            <div className="kcard" style={{ padding: 14, marginBottom: 16, border: `1px solid ${COLORS.gold}40` }}>
+              <div style={{ fontWeight: 800, fontSize: '0.85rem', color: COLORS.gold, marginBottom: 10 }}>+ Add New Team</div>
+              <input placeholder="Team name" value={newTeam.name}
+                onChange={e => setNewTeam(f => ({ ...f, name: e.target.value }))}
+                style={{ width: '100%', marginBottom: 8, padding: '7px 8px', fontSize: '0.78rem' }} />
+              <input placeholder="Short name (e.g. ALA) — optional, auto-generated if blank" value={newTeam.short_name}
+                onChange={e => setNewTeam(f => ({ ...f, short_name: e.target.value }))}
+                style={{ width: '100%', marginBottom: 8, padding: '7px 8px', fontSize: '0.78rem' }} />
+              <input placeholder="Instagram URL (optional)" value={newTeam.insta_page}
+                onChange={e => setNewTeam(f => ({ ...f, insta_page: e.target.value }))}
+                style={{ width: '100%', marginBottom: 8, padding: '7px 8px', fontSize: '0.78rem' }} />
+              <input placeholder="Website URL (optional)" value={newTeam.website_url}
+                onChange={e => setNewTeam(f => ({ ...f, website_url: e.target.value }))}
+                style={{ width: '100%', marginBottom: 10, padding: '7px 8px', fontSize: '0.78rem' }} />
+              <button className="btn btn-gold btn-block" onClick={addTeam} disabled={busy}>
+                {busy ? 'Adding…' : 'Add Team'}
+              </button>
+              <div style={{ fontSize: '0.62rem', color: '#666', marginTop: 6 }}>Add the logo, colors and links after creating — from the card below.</div>
+            </div>
+
+            {teams.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 30, color: '#555', fontSize: '0.82rem' }}>No teams yet. Add your first team above.</div>
+            )}
+
             {teams.map(t => (
               <div key={t.id} className="kcard" style={{ marginBottom: 12, padding: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -1028,6 +1030,7 @@ export default function AdminView({ data, navigate }) {
                     <div style={{ fontWeight: 800, fontSize: '0.85rem' }} className="truncate">{t.name}</div>
                     <div style={{ fontSize: '0.68rem', color: '#666' }}>{t.short_name}</div>
                   </div>
+                  <button className="btn btn-sm btn-danger" onClick={() => removeTeam(t)} disabled={busy}>Delete</button>
                 </div>
 
                 {/* Logo Upload & Color Picker in one line */}
@@ -1081,9 +1084,30 @@ export default function AdminView({ data, navigate }) {
                       }}>Save</button>
                     </div>
                   </div>
+                  {/* Website */}
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Website URL</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input type="text" id={`web_${t.id}`} placeholder="https://teamsite.com" defaultValue={t.website_url || ''} style={{ flex: 1, padding: '6px 8px', fontSize: '0.72rem' }} />
+                      <button className="btn btn-gold btn-sm" onClick={() => {
+                        const url = document.getElementById(`web_${t.id}`)?.value;
+                        db.updateTeam(t.id, { website_url: url || null }).then(() => { reload(); toast('Website saved!', 'success'); }).catch(e => toast(e.message, 'error'));
+                      }}>Save</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
+
+            {teams.length > 0 && (
+              <div className="kcard" style={{ padding: 14, marginTop: 16, border: `2px solid ${COLORS.red}` }}>
+                <div style={{ fontWeight: 800, marginBottom: 4, fontSize: '0.85rem', color: COLORS.red }}>Danger Zone</div>
+                <p style={{ fontSize: '0.68rem', color: '#666', marginBottom: 10 }}>Removes every team, their players, group assignments and matches. Use this to clear placeholder teams before entering the real roster.</p>
+                <button className="btn btn-danger btn-block" onClick={removeAllTeams} disabled={busy}>
+                  {busy ? 'Removing…' : `Remove All ${teams.length} Teams`}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

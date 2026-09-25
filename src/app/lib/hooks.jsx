@@ -27,24 +27,6 @@ export const DEFAULT_SPONSORS = [
 ];
 export const SPONSOR_LOGOS = DEFAULT_SPONSORS.map(s => ({ name: s.name, url: s.logo_url }));
 
-export const DEFAULT_TEAMS = [
-  { id: 'adlers_lombard_a', name: 'Adlers Lombard FC A', short_name: 'ALA' },
-  { id: 'adlers_lombard_b', name: 'Adlers Lombard FC B', short_name: 'ALB' },
-  { id: 'jolly_boys_vr', name: 'Jolly Boys VR', short_name: 'JBV' },
-  { id: 'fc_mantova', name: 'FC Mantova', short_name: 'MTV' },
-  { id: 'fc_bergamo', name: 'FC Bergamo', short_name: 'BER' },
-  { id: 'fc_pakistan', name: 'FC Pakistan', short_name: 'PAK' },
-  { id: 'real_milanians_fc', name: 'Real Milanians FC', short_name: 'RMF' },
-  { id: 'corsico_fc', name: 'Corsico FC', short_name: 'COR' },
-  { id: 'fc_red_devils', name: 'FC Red Devils', short_name: 'RED' },
-  { id: 'falcons_fc_milan', name: 'Falcons FC Milan', short_name: 'FAL' },
-  { id: 'fc_san_felix', name: 'FC San Felix', short_name: 'SFX' },
-  { id: 'gordons_fc', name: 'Gordons FC', short_name: 'GOR' },
-  { id: 'nilions_fc', name: 'Nilions FC', short_name: 'NIL' },
-  { id: 'real_bergamo', name: 'Real Bergamo', short_name: 'RBG' },
-  { id: 'atletico_bergamo_b', name: 'Atletico Bergamo B', short_name: 'ATB' },
-  { id: 'vazians_fc', name: 'Vazians FC', short_name: 'VAZ' },
-];
 
 // ─── TOAST SYSTEM ───────────────────────────────────────────────────────────
 let toastId = 0;
@@ -107,8 +89,6 @@ export function useTournamentData() {
   const [groupAssignments, setGroupAssignments] = useState([]);
   const [matches, setMatches] = useState([]);
   const [events, setEvents] = useState([]);
-  const [shots, setShots] = useState([]);
-  const [possession, setPossession] = useState([]);
   const [tactics, setTactics] = useState([]);
   const [allLineups, setAllLineups] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -130,45 +110,29 @@ export function useTournamentData() {
   const loadAll = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [t, p, ga, m, ev, sh, pos, tac, lu, ann, aw] = await Promise.all([
+      const [t, p, ga, m, ev, tac, lu, ann, aw] = await Promise.all([
         db.fetchTeams(),
         db.fetchPlayers(),
         db.fetchGroupAssignments(),
         db.fetchMatches(),
         db.fetchEvents(),
-        db.fetchShots().catch(() => []),
-        db.fetchPossession().catch(() => []),
         db.fetchTactics().catch(() => []),
         db.fetchAllLineups().catch(() => []),
         db.fetchAnnouncements().catch(() => []),
         db.fetchAwards().catch(() => []),
       ]);
 
-      // If no teams in DB, seed them
-      if (!t || t.length === 0) {
-        for (const team of DEFAULT_TEAMS) {
-          await db.upsertTeam(team);
-        }
-        const seeded = await db.fetchTeams();
-        setTeams(seeded && seeded.length ? seeded : DEFAULT_TEAMS);
-      } else {
-        setTeams(t);
-      }
-
+      setTeams(t || []);
       setPlayers(p || []);
       setGroupAssignments(ga || []);
       setMatches(m || []);
       setEvents(ev || []);
-      setShots(sh || []);
-      setPossession(pos || []);
       setTactics(tac || []);
       setAllLineups(lu || []);
       setAnnouncements(ann || []);
       setAwards(aw || []);
     } catch (err) {
       console.error('Failed to load data:', err);
-      // Fallback: use default teams in memory
-      setTeams(DEFAULT_TEAMS);
     } finally {
       setLoading(false);
     }
@@ -203,12 +167,6 @@ export function useTournamentData() {
     const playerSub = db.subscribeToPlayers(() => {
       db.fetchPlayers().catch(() => []).then(p => setPlayers(p || []));
     });
-    const shotSub = db.subscribeToShots(() => {
-      db.fetchShots().catch(() => []).then(s => setShots(s || []));
-    });
-    const possSub = db.subscribeToPossession(() => {
-      db.fetchPossession().catch(() => []).then(p => setPossession(p || []));
-    });
     const lineupSub = db.subscribeToLineups(() => {
       db.fetchAllLineups().catch(() => []).then(l => setAllLineups(l || []));
     });
@@ -222,8 +180,6 @@ export function useTournamentData() {
       supabase.removeChannel(teamSub);
       supabase.removeChannel(annSub);
       supabase.removeChannel(playerSub);
-      supabase.removeChannel(shotSub);
-      supabase.removeChannel(possSub);
       supabase.removeChannel(lineupSub);
       supabase.removeChannel(awardSub);
     };
@@ -277,11 +233,11 @@ export function useTournamentData() {
     .slice(0, 10);
 
   return {
-    teams, players, groups, groupAssignments, matches, events, shots, possession, tactics, allLineups,
+    teams, players, groups, groupAssignments, matches, events, tactics, allLineups,
     announcements, awards,
     standings, topScorers, topAssists, teamMap,
     loading, user, reload: () => loadAll(true),
-    setTeams, setPlayers, setGroupAssignments, setMatches, setEvents, setShots, setPossession, setTactics,
+    setTeams, setPlayers, setGroupAssignments, setMatches, setEvents, setTactics,
     setAnnouncements, setAwards,
   };
 }

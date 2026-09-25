@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as db from '../lib/db';
 import { TeamLogo, COLORS } from '../lib/hooks';
-import { ShotMapView } from '../components/ShotMap';
 
 const PITCH_BG   = '#0d1f2d';
 const LINE_HI    = 'rgba(255,255,255,0.32)';
@@ -75,7 +74,7 @@ function ReadOnlyPitch({ homeLineup, awayLineup, homeTeam, awayTeam, players }) 
 }
 
 export default function MatchView({ data, matchId, navigate }) {
-  const { matches, teamMap, events, players, shots, possession } = data;
+  const { matches, teamMap, events, players } = data;
 
   // Fetch match-specific lineups from match_lineups table
   const [lineups, setLineups] = useState([]);
@@ -103,9 +102,6 @@ export default function MatchView({ data, matchId, navigate }) {
   const awayYellow = matchEvents.filter(e => e.team_id === match.away_team_id && e.type === 'yellow_card');
   const homeRed    = matchEvents.filter(e => e.team_id === match.home_team_id && e.type === 'red_card');
   const awayRed    = matchEvents.filter(e => e.team_id === match.away_team_id && e.type === 'red_card');
-  const matchShots = (shots || []).filter(s => s.match_id === match.id);
-  const matchPossession = (possession || []).find(p => p.match_id === match.id);
-  const hasAnalytics = matchShots.length > 0 || matchPossession;
 
   // Lineup from match_lineups table (includes x,y positions)
   const homeLineup    = lineups.filter(l => l.side === 'home');
@@ -272,34 +268,6 @@ export default function MatchView({ data, matchId, navigate }) {
         </div>
       )}
 
-      {/* Possession bar (if data exists) */}
-      {matchPossession && (matchPossession.home_seconds + matchPossession.away_seconds) > 0 && (() => {
-        const total = matchPossession.home_seconds + matchPossession.away_seconds;
-        const homePct = Math.round((matchPossession.home_seconds / total) * 100);
-        const awayPct = 100 - homePct;
-        return (
-          <div style={{ padding: '4px 16px 4px' }}>
-            <div className="kcard" style={{ padding: 14 }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#888', textTransform: 'uppercase', marginBottom: 8 }}>
-                Ball Possession
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.82rem', fontWeight: 900 }}>
-                <span style={{ color: '#00C853' }}>{homePct}%</span>
-                <span style={{ color: '#448AFF' }}>{awayPct}%</span>
-              </div>
-              <div style={{ height: 10, borderRadius: 5, overflow: 'hidden', background: '#448AFF', position: 'relative' }}>
-                <div style={{ height: '100%', width: `${homePct}%`, background: '#00C853',
-                  borderRadius: '5px 0 0 5px', transition: 'width 0.4s' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: '0.65rem', color: '#666' }}>
-                <span>{home?.name}</span>
-                <span>{away?.name}</span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Starting Lineup */}
       {hasLineup && (
         <div style={{ padding: '4px 16px 4px' }}>
@@ -382,17 +350,6 @@ export default function MatchView({ data, matchId, navigate }) {
         </div>
       )}
 
-      {/* Shot analysis (if data exists) */}
-      {matchShots.length > 0 && (
-        <div style={{ padding: '4px 16px 16px' }}>
-          <div className="kcard" style={{ padding: 14 }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#888', textTransform: 'uppercase', marginBottom: 10 }}>
-              Shot Analysis
-            </div>
-            <ShotMapView shots={matchShots} homeTeam={home} awayTeam={away} players={players} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

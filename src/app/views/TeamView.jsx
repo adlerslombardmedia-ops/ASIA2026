@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { TeamLogo, COLORS } from '../lib/hooks';
-import { TeamShotMap, OUTCOME_COLORS } from '../components/ShotMap';
 
 export default function TeamView({ data, teamId, navigate }) {
-  const { teamMap, players, groups, matches, events, shots, allLineups } = data;
+  const { teamMap, players, groups, matches, events, allLineups } = data;
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const team = teamMap[teamId];
 
@@ -82,17 +81,12 @@ export default function TeamView({ data, teamId, navigate }) {
 
   // Team stats
   const teamMatches = matches.filter(m => m.played && (m.home_team_id === teamId || m.away_team_id === teamId));
-  const teamMatchIds = new Set(teamMatches.map(m => m.id));
-  const teamShots = (shots || []).filter(s => s.team_id === teamId);
-  const hasShotData = teamShots.length > 0 || (shots || []).some(s => teamMatchIds.has(s.match_id) && s.team_id !== teamId);
 
   // Player stats helper
   const getPlayerStats = (pid) => {
     const goals   = events.filter(e => e.player_id === pid && e.type === 'goal').length;
     const assists = events.filter(e => e.player_id === pid && e.type === 'assist').length;
-    const pShots  = (shots || []).filter(s => s.player_id === pid);
-    const xg      = pShots.reduce((s, x) => s + (x.xg || 0), 0);
-    return { goals, assists, shots: pShots.length, xg };
+    return { goals, assists };
   };
   const wins = teamMatches.filter(m => m.winner_team_id === teamId || (m.home_team_id === teamId && m.home_score > m.away_score) || (m.away_team_id === teamId && m.away_score > m.home_score)).length;
   const goalsFor = teamMatches.reduce((s, m) => s + (m.home_team_id === teamId ? m.home_score : m.away_score), 0);
@@ -124,15 +118,26 @@ export default function TeamView({ data, teamId, navigate }) {
             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: COLORS.gold }}>Asia Cup 2026</span>
           </div>
           <div style={{ fontSize: '0.72rem', color: '#666', marginTop: 4 }}>{roster.length} players registered</div>
-          {team.insta_page && (
-            <a href={team.insta_page} target="_blank" rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: '0.7rem', fontWeight: 700, color: '#C13584', textDecoration: 'none', background: 'rgba(193,53,132,0.1)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(193,53,132,0.3)' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-              </svg>
-              Instagram
-            </a>
-          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {team.insta_page && (
+              <a href={team.insta_page} target="_blank" rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: '0.7rem', fontWeight: 700, color: '#C13584', textDecoration: 'none', background: 'rgba(193,53,132,0.1)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(193,53,132,0.3)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                </svg>
+                Instagram
+              </a>
+            )}
+            {team.website_url && (
+              <a href={team.website_url} target="_blank" rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: '0.7rem', fontWeight: 700, color: COLORS.gold, textDecoration: 'none', background: 'rgba(255,212,0,0.1)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,212,0,0.3)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                Website
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
@@ -215,13 +220,6 @@ export default function TeamView({ data, teamId, navigate }) {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Shot Maps */}
-      {hasShotData && (
-        <div style={{ padding: '0 16px 12px' }}>
-          <TeamShotMap shots={shots || []} team={team} players={players} matches={matches} teamMap={teamMap} />
         </div>
       )}
 
@@ -335,7 +333,6 @@ export default function TeamView({ data, teamId, navigate }) {
       {selectedPlayer && (() => {
         const p = selectedPlayer;
         const stats = getPlayerStats(p.id);
-        const pShots = (shots || []).filter(s => s.player_id === p.id);
         const posColor = POS_COLORS[p.position] || '#888';
 
         return (
@@ -375,45 +372,20 @@ export default function TeamView({ data, teamId, navigate }) {
               </div>
 
               {/* Stats grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0,
                 borderBottom: '1px solid var(--border)' }}>
                 {[
-                  { label: 'Goals',   val: stats.goals,           color: '#00C853' },
-                  { label: 'Assists', val: stats.assists,          color: '#FFD400' },
-                  { label: 'Shots',   val: stats.shots,            color: '#448AFF' },
-                  { label: 'xG',      val: stats.xg.toFixed(2),   color: '#FF9100' },
+                  { label: 'Goals',   val: stats.goals,   color: '#00C853' },
+                  { label: 'Assists', val: stats.assists, color: '#FFD400' },
                 ].map((s, i) => (
                   <div key={s.label} style={{ padding: '14px 8px', textAlign: 'center',
-                    borderRight: i < 3 ? '1px solid var(--border)' : 'none' }}>
+                    borderRight: i < 1 ? '1px solid var(--border)' : 'none' }}>
                     <div style={{ fontSize: '1.3rem', fontWeight: 900, color: s.color }}>{s.val}</div>
                     <div style={{ fontSize: '0.6rem', fontWeight: 700, color: '#666',
                       textTransform: 'uppercase', marginTop: 2 }}>{s.label}</div>
                   </div>
                 ))}
               </div>
-
-              {/* Shot breakdown */}
-              {pShots.length > 0 && (
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#666',
-                    textTransform: 'uppercase', marginBottom: 8 }}>Shot Breakdown</div>
-                  {Object.entries(
-                    pShots.reduce((acc, s) => { acc[s.outcome] = (acc[s.outcome] || 0) + 1; return acc; }, {})
-                  ).map(([outcome, count]) => (
-                    <div key={outcome} style={{ display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '4px 0', fontSize: '0.75rem' }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                        background: OUTCOME_COLORS[outcome] || '#666' }} />
-                      <span style={{ flex: 1, color: '#aaa' }}>
-                        {outcome === 'goal' ? 'Goal' : outcome === 'saved_gripped' ? 'Saved (Gripped)'
-                          : outcome === 'saved_pushed' ? 'Saved (Pushed)' : outcome === 'block_on_target'
-                          ? 'Block (On Target)' : 'Block'}
-                      </span>
-                      <span style={{ fontWeight: 800, color: OUTCOME_COLORS[outcome] || '#888' }}>{count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Match events log */}
               {(stats.goals > 0 || stats.assists > 0) && (() => {
@@ -441,7 +413,7 @@ export default function TeamView({ data, teamId, navigate }) {
                 );
               })()}
 
-              {stats.goals === 0 && stats.assists === 0 && pShots.length === 0 && (
+              {stats.goals === 0 && stats.assists === 0 && (
                 <div style={{ padding: 20, textAlign: 'center', color: '#555', fontSize: '0.8rem' }}>
                   No stats recorded yet.
                 </div>

@@ -35,6 +35,22 @@ export async function updateTeam(teamId, updates) {
   return data;
 }
 
+export async function deleteTeam(teamId) {
+  // Matches reference teams with no cascade, so clear those first.
+  const m = await supabase.from('matches').delete()
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
+  if (m.error) throw m.error;
+  const { error } = await supabase.from('teams').delete().eq('id', teamId);
+  if (error) throw error;
+}
+
+export async function deleteAllTeams() {
+  const m = await supabase.from('matches').delete().neq('id', '___never___');
+  if (m.error) throw m.error;
+  const { error } = await supabase.from('teams').delete().neq('id', '___never___');
+  if (error) throw error;
+}
+
 // ─── PLAYERS ────────────────────────────────────────────────────────────────
 
 export async function fetchPlayers() {
@@ -179,12 +195,6 @@ export async function resetDatabase() {
   // teams table is intentionally NEVER touched.
 
   // 1. Leaf tables that reference matches + players
-  const r1 = await supabase.from('shots').delete().neq('id', '___never___');
-  if (r1.error) throw r1.error;
-
-  const r2 = await supabase.from('possession').delete().neq('match_id', '___never___');
-  if (r2.error) throw r2.error;
-
   const r3 = await supabase.from('match_events').delete().neq('id', '___never___');
   if (r3.error) throw r3.error;
 
@@ -422,15 +432,6 @@ export async function managerSaveLineup(teamId, password, matchId, players) {
   if (error) throw error;
 }
 
-export async function managerLogShot(teamId, password, matchId, playerId, x, y, endX, endY, outcome) {
-  const { error } = await supabase.rpc('manager_log_shot', {
-    p_team_id: teamId, p_password: password,
-    p_match_id: matchId, p_player_id: playerId,
-    p_shot_x: x, p_shot_y: y, p_end_x: endX, p_end_y: endY, p_outcome: outcome,
-  });
-  if (error) throw error;
-}
-
 export async function setManagerPassword(teamId, password) {
   const { error } = await supabase.rpc('admin_set_manager_password', {
     p_team_id: teamId, p_password: password,
@@ -571,20 +572,6 @@ export function subscribeToPlayers(callback) {
     .subscribe();
 }
 
-export function subscribeToShots(callback) {
-  return supabase
-    .channel('shots-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'shots' }, callback)
-    .subscribe();
-}
-
-export function subscribeToPossession(callback) {
-  return supabase
-    .channel('possession-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'possession' }, callback)
-    .subscribe();
-}
-
 export function subscribeToLineups(callback) {
   return supabase
     .channel('lineups-changes')
@@ -625,6 +612,20 @@ export function generateGroupFixtures(groups) {
 async function patchMatch(id, updates) {
   const { error } = await supabase.from('matches').update(updates).eq('id', id);
   if (error) throw error;
+}
+
+// Swap two matches' schedule slot (number, time, ground) — used by the admin
+// fixtures drag-and-drop reorder, so the two matches trade kickoff slots.
+export async function swapMatchSchedule(matchIdA, matchIdB, matches) {
+  const a = matches.find(m => m.id === matchIdA);
+  const b = matches.find(m => m.id === matchIdB);
+  if (!a || !b) throw new Error('Match not found');
+  await patchMatch(a.id, { match_number: b.match_number, match_time: b.match_time, ground: b.ground });
+  await patchMatch(b.id, { match_number: a.match_number, match_time: a.match_time, ground: a.ground });
+}
+
+export async function updateMatchSchedule(matchId, updates) {
+  await patchMatch(matchId, updates);
 }
 
 export async function checkAndAutoAdvance() {
@@ -705,41 +706,6 @@ export async function checkAndAutoAdvance() {
       if (loserId) await patchMatch('third', { [thirdSide]: loserId });
     }
   }
-}
-
-// ─── SHOTS ──────────────────────────────────────────────────────────────────
-
-export async function fetchShots() {
-  const { data, error } = await supabase.from('shots').select('*').order('created_at');
-  if (error) throw error;
-  return data;
-}
-
-export async function insertShot(shot) {
-  const { data, error } = await supabase.from('shots').insert(shot).select().single();
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteShot(shotId) {
-  const { error } = await supabase.from('shots').delete().eq('id', shotId);
-  if (error) throw error;
-}
-
-// ─── POSSESSION ──────────────────────────────────────────────────────────────
-
-export async function fetchPossession() {
-  const { data, error } = await supabase.from('possession').select('*');
-  if (error) throw error;
-  return data;
-}
-
-export async function upsertPossession(matchId, homeSeconds, awaySeconds) {
-  const { error } = await supabase.from('possession').upsert(
-    { match_id: matchId, home_seconds: homeSeconds, away_seconds: awaySeconds, updated_at: new Date().toISOString() },
-    { onConflict: 'match_id' }
-  );
-  if (error) throw error;
 }
 
 // ─── MATCH STATUS ────────────────────────────────────────────────────────────
