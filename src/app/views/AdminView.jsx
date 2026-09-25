@@ -59,7 +59,7 @@ export default function AdminView({ data, navigate }) {
   const [pName, setPName] = useState('');
   const [pNum, setPNum] = useState('');
   const [pPos, setPPos] = useState('MID');
-  const [pStarter, setPStarter] = useState(false);
+  const [pType, setPType] = useState('player');
   
   const [busy, setBusy] = useState(false);
   const [newTeam, setNewTeam] = useState({ name: '', short_name: '', insta_page: '', website_url: '' });
@@ -339,7 +339,7 @@ export default function AdminView({ data, navigate }) {
   const addPlayer = async () => {
     if (!selTeam || !pName.trim()) { toast('Select a team and enter name', 'error'); return; }
     try {
-      await db.insertPlayer({ team_id: selTeam, name: pName.trim(), number: pNum ? parseInt(pNum) : null, position: pPos, is_starter: pStarter });
+      await db.insertPlayer({ team_id: selTeam, name: pName.trim(), number: pNum ? parseInt(pNum) : null, position: pPos, player_type: pType });
       setPName(''); setPNum('');
       await reload();
       toast('Player created!', 'success');
@@ -502,7 +502,7 @@ export default function AdminView({ data, navigate }) {
         }
 
         const teamId = teamCache[rawTeam.toLowerCase()];
-        await db.insertPlayer({ team_id: teamId, name: rawName, number: jNum, position: pos, is_starter: false });
+        await db.insertPlayer({ team_id: teamId, name: rawName, number: jNum, position: pos, player_type: 'player' });
         imported++;
       }
 
@@ -1143,10 +1143,9 @@ export default function AdminView({ data, navigate }) {
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.62rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Starting Status</label>
-                  <select value={String(pStarter)} onChange={e => setPStarter(e.target.value === 'true')}>
-                    <option value="false">Bench Player</option>
-                    <option value="true">Starting 7</option>
+                  <label style={{ fontSize: '0.62rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Role</label>
+                  <select value={pType} onChange={e => setPType(e.target.value)}>
+                    {SQUAD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -1167,8 +1166,8 @@ export default function AdminView({ data, navigate }) {
                     <span style={{ fontWeight: 900, color: COLORS.gold, width: 24 }}>#{p.number || '?'}</span>
                     <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
                     <span style={{ color: '#666', fontSize: '0.68rem' }}>{p.position}</span>
-                    <span style={{ fontSize: '0.62rem', color: p.is_starter ? COLORS.green : '#666', fontWeight: 700 }}>
-                      {p.is_starter ? 'ST' : 'BN'}
+                    <span style={{ fontSize: '0.62rem', color: (p.player_type || 'player') === 'player' ? COLORS.green : '#666', fontWeight: 700, textTransform: 'uppercase' }}>
+                      {{ player: 'Player', sub: 'Sub', reserve: 'Reserve', manager: 'Manager' }[p.player_type] || 'Player'}
                     </span>
                     <button 
                       style={{ background: 'transparent', color: COLORS.red, border: 'none', fontSize: '0.78rem', cursor: 'pointer', marginLeft: 4 }}
@@ -1208,6 +1207,8 @@ export default function AdminView({ data, navigate }) {
                 crop={cropPos}
                 zoom={zoom}
                 aspect={1}
+                cropShape="round"
+                showGrid={false}
                 onCropChange={setCropPos}
                 onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
                 onZoomChange={setZoom}

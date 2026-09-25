@@ -1,6 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import Cropper from 'react-easy-crop';
 import * as db from '../lib/db';
 import { toast, TeamLogo, COLORS } from '../lib/hooks';
+
+// ─── CROP HELPER (matches Admin → Teams & Logos) ───────────────────────────────
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+async function getCroppedImg(imageSrc, pixelCrop) {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((file) => {
+      if (!file) { reject(new Error('Canvas is empty')); return; }
+      file.name = 'cropped.jpeg';
+      resolve(file);
+    }, 'image/jpeg');
+  });
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const GOLD = COLORS.gold;
@@ -250,9 +277,175 @@ function SquadTab({ session, myPlayers }) {
   );
 }
 
+// ─── TEAM PROFILE TAB (logo, colors, Instagram, website) ──────────────────────
+function TeamProfileTab({ session, team, onUpdated }) {
+  const [instaVal, setInstaVal]     = useState(team?.insta_page || '');
+  const [webVal, setWebVal]         = useState(team?.website_url || '');
+  const [logoUrlVal, setLogoUrlVal] = useState('');
+  const [busy, setBusy]             = useState(false);
+
+  const [cropSrc, setCropSrc]                   = useState(null);
+  const [cropPos, setCropPos]                   = useState({ x: 0, y: 0 });
+  const [zoom, setZoom]                         = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  const save = async (updates, successMsg) => {
+    setBusy(true);
+    try {
+      await db.managerUpdateTeam(session.teamId, session.password, updates);
+      toast(successMsg, 'success');
+      if (onUpdated) onUpdated();
+    } catch (err) { toast(err.message || 'Failed to save', 'error'); }
+    setBusy(false);
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setCropSrc(reader.result?.toString() || '');
+      setZoom(1);
+      setCropPos({ x: 0, y: 0 });
+    });
+    reader.readAsDataURL(file);
+    e.target.value = null;
+  };
+
+  const applyCrop = async () => {
+    if (!cropSrc || !croppedAreaPixels) return;
+    setBusy(true);
+    try {
+      const croppedBlob = await getCroppedImg(cropSrc, croppedAreaPixels);
+      const dataUrl = await db.managerCompressLogo(croppedBlob);
+      await db.managerUpdateTeam(session.teamId, session.password, { logo_url: dataUrl });
+      toast('Logo updated!', 'success');
+      setCropSrc(null);
+      if (onUpdated) onUpdated();
+    } catch (err) { toast(err.message || 'Upload failed', 'error'); }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{ padding: '16px 16px 40px' }}>
+      <div className="kcard" style={{ padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <TeamLogo team={team} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{team?.name}</div>
+            <div style={{ fontSize: '0.68rem', color: '#666' }}>{team?.short_name}</div>
+          </div>
+        </div>
+
+        {/* Logo */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelSt}>Set Team Logo (URL or Upload File)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input type="text" placeholder="Paste image URL..." value={logoUrlVal}
+              onChange={e => setLogoUrlVal(e.target.value)}
+              style={{ flex: 1, minWidth: 120, padding: '8px 10px', fontSize: '0.78rem' }} />
+            <button type="button" disabled={busy || !logoUrlVal.trim()}
+              onClick={() => save({ logo_url: logoUrlVal.trim() }, 'Logo URL applied!')}
+              style={{ background: GOLD, color: '#111', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: '0.75rem', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+              Set URL
+            </button>
+            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#555' }}>OR</span>
+            <label style={{ background: GREEN, color: '#111', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', margin: 0 }}>
+              Upload File
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={busy} onChange={onFile} />
+            </label>
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelSt}>Primary Color</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="color" defaultValue={team?.primary_color || '#FFD400'}
+                onChange={e => save({ primary_color: e.target.value }, 'Primary color updated!')}
+                style={{ padding: 0, width: 32, height: 28, border: 'none' }} />
+              <span style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>{team?.primary_color || '#FFD400'}</span>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelSt}>Secondary Color</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="color" defaultValue={team?.secondary_color || '#282828'}
+                onChange={e => save({ secondary_color: e.target.value }, 'Secondary color updated!')}
+                style={{ padding: 0, width: 32, height: 28, border: 'none' }} />
+              <span style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>{team?.secondary_color || '#282828'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Instagram */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelSt}>Instagram Page URL</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="https://www.instagram.com/teamname/" value={instaVal}
+              onChange={e => setInstaVal(e.target.value)} style={{ flex: 1, padding: '8px 10px', fontSize: '0.78rem' }} />
+            <button type="button" disabled={busy}
+              onClick={() => save({ insta_page: instaVal.trim() }, 'Instagram page saved!')}
+              style={{ background: GOLD, color: '#111', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: '0.75rem', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+              Save
+            </button>
+          </div>
+        </div>
+
+        {/* Website */}
+        <div>
+          <label style={labelSt}>Website URL</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="https://teamsite.com" value={webVal}
+              onChange={e => setWebVal(e.target.value)} style={{ flex: 1, padding: '8px 10px', fontSize: '0.78rem' }} />
+            <button type="button" disabled={busy}
+              onClick={() => save({ website_url: webVal.trim() }, 'Website saved!')}
+              style={{ background: GOLD, color: '#111', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: '0.75rem', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card)' }}>
+            <div style={{ fontWeight: 900 }}>Frame & Crop Logo</div>
+            <button onClick={() => setCropSrc(null)} style={{ background: 'transparent', color: RED, fontWeight: 900, cursor: 'pointer', border: 'none', fontSize: '1rem' }}>✕</button>
+          </div>
+          <div style={{ position: 'relative', flex: 1, width: '100%', background: '#111' }}>
+            <Cropper
+              image={cropSrc}
+              crop={cropPos}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCropPos}
+              onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+              onZoomChange={setZoom}
+            />
+          </div>
+          <div style={{ padding: 16, background: 'var(--card)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>Zoom</span>
+              <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1 }} />
+            </div>
+            <button onClick={applyCrop} disabled={busy} style={{ ...btnGold, opacity: busy ? 0.6 : 1 }}>
+              {busy ? 'Applying Crop…' : 'Apply Crop & Save Logo'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function ManagerPortal({ data, navigate }) {
-  const { teams = [], players = [], matches = [], loading } = data || {};
+  const { teams = [], players = [], matches = [], loading, reload } = data || {};
 
   const [session, setSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch { return null; }
@@ -354,7 +547,7 @@ export default function ManagerPortal({ data, navigate }) {
 
       {/* ── Top-level tabs ── */}
       <div style={{ display: 'flex', padding: '14px 16px 0', borderBottom: '1px solid var(--border)' }}>
-        {[{ key: 'squad', label: '📋 Squad' }, { key: 'matches', label: '⚽ Matches' }].map(t => (
+        {[{ key: 'squad', label: '📋 Squad' }, { key: 'matches', label: '⚽ Matches' }, { key: 'team', label: '🛡️ Team' }].map(t => (
           <button key={t.key} onClick={() => setTopTab(t.key)}
             style={{ padding: '9px 20px', borderRadius: '8px 8px 0 0', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', border: `1px solid ${topTab === t.key ? GOLD : 'var(--border)'}`, borderBottom: topTab === t.key ? '1px solid var(--bg)' : '1px solid var(--border)', background: topTab === t.key ? GOLD : 'var(--card)', color: topTab === t.key ? '#111' : '#888', marginBottom: -1, position: 'relative', zIndex: topTab === t.key ? 1 : 0, marginRight: 4 }}>
             {t.label}
@@ -414,6 +607,11 @@ export default function ManagerPortal({ data, navigate }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Team tab ── */}
+      {topTab === 'team' && (
+        <TeamProfileTab session={session} team={myTeam} onUpdated={reload} />
       )}
     </div>
   );

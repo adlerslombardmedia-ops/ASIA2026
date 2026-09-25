@@ -36,7 +36,7 @@ export default function StatsView({ data, navigate }) {
   });
   const cleanSheets = Object.entries(csCounts)
     .map(([teamId, count]) => {
-      const gk = players.find(p => p.team_id === teamId && p.position === 'GK' && p.is_starter);
+      const gk = players.find(p => p.team_id === teamId && p.position === 'GK' && (p.player_type || 'player') === 'player');
       return { player: gk, team: teamMap[teamId], count };
     })
     .filter(x => x.player)

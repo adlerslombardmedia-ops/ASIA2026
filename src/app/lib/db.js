@@ -409,6 +409,25 @@ export async function managerDeletePlayer(teamId, password, playerId) {
   if (error) throw error;
 }
 
+// updates: { logo_url?, primary_color?, secondary_color?, insta_page?, website_url? }
+export async function managerUpdateTeam(teamId, password, updates) {
+  const { error } = await supabase.rpc('manager_update_team', {
+    p_team_id: teamId, p_password: password,
+    p_logo_url: updates.logo_url ?? null,
+    p_primary_color: updates.primary_color ?? null,
+    p_secondary_color: updates.secondary_color ?? null,
+    p_insta_page: updates.insta_page ?? null,
+    p_website_url: updates.website_url ?? null,
+  });
+  if (error) throw error;
+}
+
+// Managers can't write to the team-logos storage bucket (admin-only RLS),
+// so their logo upload always goes through the compressed base64 fallback.
+export async function managerCompressLogo(file) {
+  return compressImage(file, 300, 300);
+}
+
 // ─── AWARDS ─────────────────────────────────────────────────────────────────
 
 export async function fetchAwards() {
