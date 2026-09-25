@@ -1368,9 +1368,10 @@ export default function AdminView({ data, navigate }) {
 
 // ─── SQUADS PANEL ────────────────────────────────────────────────────────────
 const SQUAD_TYPES = [
-  { value: 'player',  label: 'Players',  limit: 12 },
-  { value: 'reserve', label: 'Reserves', limit: 3  },
-  { value: 'manager', label: 'Managers', limit: 2  },
+  { value: 'player',  label: 'Starting Players', limit: 7 },
+  { value: 'sub',     label: 'Subs',             limit: 5 },
+  { value: 'reserve', label: 'Reserves',         limit: 3 },
+  { value: 'manager', label: 'Managers',         limit: 1 },
 ];
 
 function SquadsPanel({ teams, players }) {
@@ -1404,12 +1405,10 @@ function SquadsPanel({ teams, players }) {
 
   const counts = selTeam ? {
     player:  teamPlayers.filter(p => (p.player_type || 'player') === 'player').length,
+    sub:     teamPlayers.filter(p => p.player_type === 'sub').length,
     reserve: teamPlayers.filter(p => p.player_type === 'reserve').length,
     manager: teamPlayers.filter(p => p.player_type === 'manager').length,
   } : null;
-
-  const keralite    = teamPlayers.filter(p => p.player_type !== 'manager' && (p.player_category || 'Keralite') === 'Keralite').length;
-  const nonKeralite = teamPlayers.filter(p => p.player_type !== 'manager' && p.player_category === 'Non-Keralite').length;
 
   return (
     <div>
@@ -1441,7 +1440,7 @@ function SquadsPanel({ teams, players }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              {['Team', 'Players', 'Reserves', 'Managers', 'Keralite', 'Non-K', 'Total'].map(h => (
+              {['Team', 'Players', 'Subs', 'Reserves', 'Managers', 'Total'].map(h => (
                 <th key={h} style={{ padding: '6px 8px', textAlign: h === 'Team' ? 'left' : 'center', fontWeight: 800, color: '#888', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: 0.4 }}>{h}</th>
               ))}
             </tr>
@@ -1450,22 +1449,20 @@ function SquadsPanel({ teams, players }) {
             {sortedTeams.map(team => {
               const tp = players.filter(p => p.team_id === team.id);
               const pl = tp.filter(p => (p.player_type || 'player') === 'player').length;
+              const sb = tp.filter(p => p.player_type === 'sub').length;
               const re = tp.filter(p => p.player_type === 'reserve').length;
               const mg = tp.filter(p => p.player_type === 'manager').length;
-              const ker = tp.filter(p => p.player_type !== 'manager' && (p.player_category || 'Keralite') === 'Keralite').length;
-              const nonK = tp.filter(p => p.player_type !== 'manager' && p.player_category === 'Non-Keralite').length;
-              const total = pl + re + mg;
+              const total = pl + sb + re + mg;
               const isSelected = selTeam === team.id;
               return (
                 <tr key={team.id}
                   onClick={() => setSelTeam(isSelected ? '' : team.id)}
                   style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: isSelected ? 'rgba(255,212,0,0.06)' : 'transparent' }}>
                   <td style={{ padding: '7px 8px', fontWeight: 700 }}>{team.short_name}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'center', color: pl >= 12 ? '#00C853' : pl > 0 ? '#FFD400' : '#555' }}>{pl}/12</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'center', color: pl >= 7 ? '#00C853' : pl > 0 ? '#FFD400' : '#555' }}>{pl}/7</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'center', color: sb >= 5 ? '#00C853' : sb > 0 ? '#FFD400' : '#555' }}>{sb}/5</td>
                   <td style={{ padding: '7px 8px', textAlign: 'center', color: re >= 3 ? '#00C853' : re > 0 ? '#FFD400' : '#555' }}>{re}/3</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'center', color: mg >= 2 ? '#00C853' : mg > 0 ? '#FFD400' : '#555' }}>{mg}/2</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'center', color: '#4CAF50' }}>{ker}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'center', color: '#FF9800' }}>{nonK}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'center', color: mg >= 1 ? '#00C853' : mg > 0 ? '#FFD400' : '#555' }}>{mg}/1</td>
                   <td style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 800 }}>{total}</td>
                 </tr>
               );
@@ -1481,10 +1478,6 @@ function SquadsPanel({ teams, players }) {
             <h4 style={{ fontWeight: 900, fontSize: '0.9rem', margin: 0 }}>
               {teams.find(t => t.id === selTeam)?.name} — Full Squad
             </h4>
-            <div style={{ display: 'flex', gap: 10, fontSize: '0.72rem', color: '#888' }}>
-              <span style={{ color: '#4CAF50' }}>● Keralite: {keralite}</span>
-              <span style={{ color: '#FF9800' }}>● Non-K: {nonKeralite}</span>
-            </div>
           </div>
 
           {teamPlayers.length === 0 ? (
@@ -1502,7 +1495,7 @@ function SquadsPanel({ teams, players }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['#', 'Full Name', 'Position', 'Category'].map(h => (
+                          {['#', 'Full Name', 'Position'].map(h => (
                             <th key={h} style={{ padding: '5px 8px', textAlign: h === 'Full Name' ? 'left' : 'center', fontWeight: 700, color: '#888', fontSize: '0.65rem', textTransform: 'uppercase' }}>{h}</th>
                           ))}
                         </tr>
@@ -1513,11 +1506,6 @@ function SquadsPanel({ teams, players }) {
                             <td style={{ padding: '7px 8px', textAlign: 'center', fontWeight: 700, color: '#FFD400' }}>{p.number ?? '—'}</td>
                             <td style={{ padding: '7px 8px', fontWeight: 600 }}>{p.name}</td>
                             <td style={{ padding: '7px 8px', textAlign: 'center', color: '#aaa' }}>{p.position || '—'}</td>
-                            <td style={{ padding: '7px 8px', textAlign: 'center' }}>
-                              <span style={{ color: (p.player_category || 'Keralite') === 'Keralite' ? '#4CAF50' : '#FF9800', fontWeight: 700, fontSize: '0.72rem' }}>
-                                {p.player_category || 'Keralite'}
-                              </span>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1880,7 +1868,8 @@ function DownloadsPanel({ teams, matches, teamMap, groupAssignments, groups, pla
       addHeader(doc, t.name.toUpperCase(), grp);
 
       const TYPES = [
-        { key: 'player',  label: 'Players' },
+        { key: 'player',  label: 'Starting Players' },
+        { key: 'sub',     label: 'Subs' },
         { key: 'reserve', label: 'Reserves' },
         { key: 'manager', label: 'Managers' },
       ];
@@ -1902,12 +1891,11 @@ function DownloadsPanel({ teams, matches, teamMap, groupAssignments, groups, pla
           p.number ?? '—',
           p.name,
           p.position || '—',
-          p.player_category || '—',
         ]);
 
         autoTable(doc, {
           startY: startY + 5,
-          head: [['#', 'Name', 'Position', 'Category']],
+          head: [['#', 'Name', 'Position']],
           body: rows,
           headStyles: {
             fillColor: key === 'player' ? [13, 13, 13] : key === 'reserve' ? [60, 60, 60] : [100, 100, 100],

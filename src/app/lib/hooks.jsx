@@ -90,8 +90,6 @@ export function useTournamentData() {
   const [groupAssignments, setGroupAssignments] = useState([]);
   const [matches, setMatches] = useState([]);
   const [events, setEvents] = useState([]);
-  const [tactics, setTactics] = useState([]);
-  const [allLineups, setAllLineups] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [awards, setAwards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,14 +109,12 @@ export function useTournamentData() {
   const loadAll = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [t, p, ga, m, ev, tac, lu, ann, aw] = await Promise.all([
+      const [t, p, ga, m, ev, ann, aw] = await Promise.all([
         db.fetchTeams(),
         db.fetchPlayers(),
         db.fetchGroupAssignments(),
         db.fetchMatches(),
         db.fetchEvents(),
-        db.fetchTactics().catch(() => []),
-        db.fetchAllLineups().catch(() => []),
         db.fetchAnnouncements().catch(() => []),
         db.fetchAwards().catch(() => []),
       ]);
@@ -128,8 +124,6 @@ export function useTournamentData() {
       setGroupAssignments(ga || []);
       setMatches(m || []);
       setEvents(ev || []);
-      setTactics(tac || []);
-      setAllLineups(lu || []);
       setAnnouncements(ann || []);
       setAwards(aw || []);
     } catch (err) {
@@ -168,9 +162,6 @@ export function useTournamentData() {
     const playerSub = db.subscribeToPlayers(() => {
       db.fetchPlayers().catch(() => []).then(p => setPlayers(p || []));
     });
-    const lineupSub = db.subscribeToLineups(() => {
-      db.fetchAllLineups().catch(() => []).then(l => setAllLineups(l || []));
-    });
     const awardSub = db.subscribeToAwards(() => {
       db.fetchAwards().catch(() => []).then(a => setAwards(a || []));
     });
@@ -181,7 +172,6 @@ export function useTournamentData() {
       supabase.removeChannel(teamSub);
       supabase.removeChannel(annSub);
       supabase.removeChannel(playerSub);
-      supabase.removeChannel(lineupSub);
       supabase.removeChannel(awardSub);
     };
   }, []);
@@ -234,11 +224,11 @@ export function useTournamentData() {
     .slice(0, 10);
 
   return {
-    teams, players, groups, groupAssignments, matches, events, tactics, allLineups,
+    teams, players, groups, groupAssignments, matches, events,
     announcements, awards,
     standings, topScorers, topAssists, teamMap,
     loading, user, reload: () => loadAll(true),
-    setTeams, setPlayers, setGroupAssignments, setMatches, setEvents, setTactics,
+    setTeams, setPlayers, setGroupAssignments, setMatches, setEvents,
     setAnnouncements, setAwards,
   };
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TeamLogo, COLORS } from '../lib/hooks';
 
 export default function TeamView({ data, teamId, navigate }) {
-  const { teamMap, players, groups, matches, events, allLineups } = data;
+  const { teamMap, players, groups, matches, events } = data;
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const team = teamMap[teamId];
 
@@ -17,61 +17,12 @@ export default function TeamView({ data, teamId, navigate }) {
 
   const roster = players.filter(p => p.team_id === teamId).sort((a, b) => (a.number || 99) - (b.number || 99));
 
-  // Compute Starting 7 from match_lineups history
-  // Count appearances per player; on ties, prefer the player who started more recently
-  const playedMatchIds = new Set(
-    matches.filter(m => m.played && (m.home_team_id === teamId || m.away_team_id === teamId)).map(m => m.id)
-  );
-  // Map matchId → match_date for tie-breaking
-  const matchDateMap = {};
-  matches.forEach(m => { matchDateMap[m.id] = m.match_date || ''; });
+  // Squad roles are fixed at registration (no per-match lineup)
+  const starters = roster.filter(p => (p.player_type || 'player') === 'player');
+  const subs = roster.filter(p => p.player_type === 'sub');
+  const reserves = roster.filter(p => p.player_type === 'reserve');
+  const managers = roster.filter(p => p.player_type === 'manager');
 
-  const starterCount = {}; // playerId → count
-  const starterLastDate = {}; // playerId → latest match_date they started
-  (allLineups || []).forEach(lu => {
-    if (!playedMatchIds.has(lu.match_id)) return;
-    const pid = lu.player_id;
-    starterCount[pid] = (starterCount[pid] || 0) + 1;
-    const d = matchDateMap[lu.match_id] || '';
-    if (!starterLastDate[pid] || d > starterLastDate[pid]) starterLastDate[pid] = d;
-  });
-
-  const rosterWithScore = roster.map(p => ({
-    ...p,
-    _count: starterCount[p.id] || 0,
-    _lastDate: starterLastDate[p.id] || '',
-  }));
-
-  // Sort: most appearances first, then most recent start on tie
-  const sortedByAppearances = [...rosterWithScore].sort((a, b) =>
-    b._count - a._count || (b._lastDate > a._lastDate ? 1 : b._lastDate < a._lastDate ? -1 : 0)
-  );
-
-  const starterSet = new Set(sortedByAppearances.slice(0, 7).filter(p => p._count > 0).map(p => p.id));
-  const starters = roster.filter(p => starterSet.has(p.id)).map(p => ({ ...p, _count: starterCount[p.id] || 0 }))
-    .sort((a, b) => b._count - a._count || (a.number || 99) - (b.number || 99));
-  const bench = roster.filter(p => !starterSet.has(p.id));
-
-  // Formation layout: group starters by position, assign standard coordinates
-  // Pitch attacking upward: GK near y=135, DEF y=105, MID y=72, FWD y=38
-  const FORMATION_Y = { GK: 135, DEF: 105, MID: 72, FWD: 38 };
-  const posGroups = { GK: [], DEF: [], MID: [], FWD: [] };
-  starters.forEach(p => {
-    const pos = p.position && posGroups[p.position] ? p.position : 'MID';
-    posGroups[pos].push(p);
-  });
-  const formationPos = {};
-  Object.entries(posGroups).forEach(([pos, group]) => {
-    if (group.length === 0) return;
-    const y = FORMATION_Y[pos];
-    group.forEach((p, i) => {
-      const n = group.length;
-      // Keep players within ~20–80 range regardless of group size
-      const spread = Math.min(60, n * 20);
-      const x = n === 1 ? 50 : (50 - spread / 2) + i * (spread / (n - 1));
-      formationPos[p.id] = { x, y };
-    });
-  });
   const grp = Object.entries(groups).find(([, ids]) => ids.includes(teamId))?.[0];
 
   // All team matches (played + upcoming), sorted by match number
@@ -225,59 +176,13 @@ export default function TeamView({ data, teamId, navigate }) {
 
       {/* Roster */}
       <div style={{ padding: '0 16px 16px' }}>
-        {/* Starters */}
+        {/* Starting XI */}
         <div className="kcard" style={{ marginBottom: 12 }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Starting Lineup</span>
-            <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 600 }}>by appearances</span>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Starting Squad ({starters.length})</span>
           </div>
-          {/* Formation pitch */}
-          {starters.length > 0 && (
-            <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid var(--border)' }}>
-              <svg viewBox="0 0 100 150" width="100%" style={{ display: 'block', borderRadius: 8, maxHeight: 340 }}>
-                <rect width="100" height="150" fill="#0d1f2d" rx="4" />
-                {[0,1,2,3,4,5].map(i => (
-                  <rect key={i} x="0" y={i*25} width="100" height="12.5" fill="rgba(255,255,255,0.016)" />
-                ))}
-                <rect x="1" y="1" width="98" height="148" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="0.7" />
-                <line x1="1" y1="75" x2="99" y2="75" stroke="rgba(255,255,255,0.32)" strokeWidth="0.5" />
-                <circle cx="50" cy="75" r="10" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <circle cx="50" cy="75" r="0.9" fill="rgba(255,255,255,0.32)" />
-                <rect x="17.5" y="1" width="65" height="30" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <rect x="32.5" y="1" width="35" height="10" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <circle cx="50" cy="22.5" r="0.9" fill="rgba(255,255,255,0.32)" />
-                <path d="M 41.5 31 A 12 12 0 0 0 58.5 31" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <rect x="43.75" y="-3" width="12.5" height="4" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.32)" strokeWidth="0.7" />
-                <rect x="17.5" y="119" width="65" height="30" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <rect x="32.5" y="139" width="35" height="10" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <circle cx="50" cy="127.5" r="0.9" fill="rgba(255,255,255,0.32)" />
-                <path d="M 41.5 119 A 12 12 0 0 1 58.5 119" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.5" />
-                <rect x="43.75" y="149" width="12.5" height="4" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.32)" strokeWidth="0.7" />
-                {starters.map(p => {
-                  const pos = formationPos[p.id];
-                  if (!pos) return null;
-                  const posColor = POS_COLORS[p.position] || COLORS.gold;
-                  return (
-                    <g key={p.id} onClick={() => setSelectedPlayer(p)} style={{ cursor: 'pointer' }}>
-                      <circle cx={pos.x} cy={pos.y} r="5.5" fill={posColor} stroke="#000" strokeWidth="0.5" opacity="0.92" />
-                      <circle cx={pos.x} cy={pos.y} r="6.8" fill="none" stroke={posColor} strokeWidth="0.4" opacity="0.4" />
-                      <text x={pos.x} y={pos.y + 0.5} textAnchor="middle" dominantBaseline="middle"
-                        fontSize="3.6" fontWeight="800" fill="#000" style={{ pointerEvents: 'none' }}>
-                        {String(p.number ?? '?').slice(0, 2)}
-                      </text>
-                      <text x={pos.x} y={pos.y + 9.5} textAnchor="middle" fontSize="2.8" fill="#fff"
-                        fontWeight="600" opacity="0.85" style={{ pointerEvents: 'none' }}>
-                        {p.name.split(' ').slice(-1)[0]?.slice(0, 8)}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-          )}
-
           {starters.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: '#555', fontSize: '0.82rem' }}>No lineup data yet</div>
+            <div style={{ padding: 16, textAlign: 'center', color: '#555', fontSize: '0.82rem' }}>No squad registered yet</div>
           ) : starters.map(p => {
             const stats = getPlayerStats(p.id);
             return (
@@ -292,7 +197,6 @@ export default function TeamView({ data, teamId, navigate }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem' }} className="truncate">{p.name}</div>
                   <div style={{ fontSize: '0.62rem', color: '#666', marginTop: 1, display: 'flex', gap: 6 }}>
-                    <span style={{ color: COLORS.gold }}>{p._count} game{p._count !== 1 ? 's' : ''}</span>
                     {stats.goals > 0 && <span style={{ color: '#00C853' }}>G {stats.goals}</span>}
                     {stats.assists > 0 && <span style={{ color: '#aaa' }}>A {stats.assists}</span>}
                   </div>
@@ -305,13 +209,35 @@ export default function TeamView({ data, teamId, navigate }) {
           })}
         </div>
 
-        {/* Bench */}
-        {bench.length > 0 && (
-          <div className="kcard">
+        {/* Substitutes */}
+        {subs.length > 0 && (
+          <div className="kcard" style={{ marginBottom: 12 }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Substitutes ({bench.length})
+              Substitutes ({subs.length})
             </div>
-            {bench.map(p => (
+            {subs.map(p => (
+              <div key={p.id} onClick={() => setSelectedPlayer(p)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
+                  borderBottom: '1px solid var(--border)', opacity: 0.85, cursor: 'pointer' }}
+                className="tappable">
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--card2)', color: '#666',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.68rem', flexShrink: 0 }}>
+                  {p.number || '?'}
+                </div>
+                <span style={{ fontWeight: 600, fontSize: '0.82rem', flex: 1 }} className="truncate">{p.name}</span>
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#666' }}>{p.position || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Reserves */}
+        {reserves.length > 0 && (
+          <div className="kcard" style={{ marginBottom: 12 }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Reserves ({reserves.length})
+            </div>
+            {reserves.map(p => (
               <div key={p.id} onClick={() => setSelectedPlayer(p)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
                   borderBottom: '1px solid var(--border)', opacity: 0.7, cursor: 'pointer' }}
@@ -322,6 +248,20 @@ export default function TeamView({ data, teamId, navigate }) {
                 </div>
                 <span style={{ fontWeight: 600, fontSize: '0.82rem', flex: 1 }} className="truncate">{p.name}</span>
                 <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#666' }}>{p.position || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Management */}
+        {managers.length > 0 && (
+          <div className="kcard">
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Management ({managers.length})
+            </div>
+            {managers.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.82rem', flex: 1 }} className="truncate">{p.name}</span>
               </div>
             ))}
           </div>
@@ -361,7 +301,7 @@ export default function TeamView({ data, teamId, navigate }) {
                         {p.position || '—'}
                       </span>
                       <span style={{ fontSize: '0.7rem', color: '#666', alignSelf: 'center' }}>
-                        {p.is_starter ? '▶ Starting Lineup' : 'Substitute'}
+                        {{ player: 'Starting Squad', sub: 'Substitute', reserve: 'Reserve', manager: 'Management' }[p.player_type] || 'Starting Squad'}
                       </span>
                     </div>
                   </div>

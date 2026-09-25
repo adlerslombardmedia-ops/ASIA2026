@@ -1,206 +1,8 @@
 // ─── Admin Match Page ────────────────────────────────────────────────────────
-// Dedicated match management page: Score · Lineup
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+// Dedicated match management page: Score
+import React, { useState, useEffect } from 'react';
 import * as db from '../lib/db';
 import { TeamLogo, COLORS, toast } from '../lib/hooks';
-
-// ─── Horizontal SVG Pitch (viewBox 0 0 100 65) — matches Manager Portal ───────
-function PitchSVG({ children }) {
-  return (
-    <g>
-      {/* Green stripes */}
-      {[0,1,2,3,4,5].map(i => (
-        <rect key={i} x={2 + i * 16} y={2} width={16} height={61} fill={i % 2 ? '#276b2c' : '#2d7532'} />
-      ))}
-      {/* Outline */}
-      <rect x="2" y="2" width="96" height="61" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="0.6"/>
-      {/* Centre line + circle */}
-      <line x1="50" y1="2" x2="50" y2="63" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-      <circle cx="50" cy="32.5" r="8" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-      <circle cx="50" cy="32.5" r="0.8" fill="rgba(255,255,255,0.6)"/>
-      {/* Penalty areas */}
-      <rect x="2"  y="16" width="16" height="33" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-      <rect x="82" y="16" width="16" height="33" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-      {/* 6-yard boxes */}
-      <rect x="2"    y="23" width="5.5" height="19" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.4"/>
-      <rect x="92.5" y="23" width="5.5" height="19" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.4"/>
-      {/* Goals */}
-      <rect x="0"  y="27" width="2"  height="11" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.4"/>
-      <rect x="98" y="27" width="2"  height="11" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.4"/>
-      {/* Penalty spots */}
-      <circle cx="12" cy="32.5" r="0.6" fill="rgba(255,255,255,0.5)"/>
-      <circle cx="88" cy="32.5" r="0.6" fill="rgba(255,255,255,0.5)"/>
-      {children}
-    </g>
-  );
-}
-
-// ─── LINEUP BUILDER ───────────────────────────────────────────────────────────
-// Horizontal pitch (100×65): Home attacks → right, Away attacks ← left
-function LineupBuilder({ matchId, homeTeam, awayTeam, players }) {
-  const [homePl, setHomePl] = useState({});
-  const [awayPl, setAwayPl] = useState({});
-  const [dragging, setDragging] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const svgRef = useRef(null);
-
-  const homePlayers = players.filter(p => p.team_id === homeTeam?.id);
-  const awayPlayers = players.filter(p => p.team_id === awayTeam?.id);
-  const homePlaced  = Object.keys(homePl);
-  const awayPlaced  = Object.keys(awayPl);
-
-  // Load saved lineup
-  useEffect(() => {
-    db.fetchLineups(matchId).then(rows => {
-      const hm = {}, am = {};
-      rows.forEach(r => {
-        const pos = { x: r.x ?? 25, y: r.y ?? 32.5 };
-        if (r.side === 'home') hm[r.player_id] = pos;
-        else if (r.side === 'away') am[r.player_id] = pos;
-      });
-      if (Object.keys(hm).length) setHomePl(hm);
-      if (Object.keys(am).length) setAwayPl(am);
-    }).catch(() => {});
-  }, [matchId]);
-
-  const svgCoords = useCallback((e) => {
-    if (!svgRef.current) return null;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width)  * 100;
-    const y = ((e.clientY - rect.top)  / rect.height) * 65;
-    return { x: Math.max(2, Math.min(98, x)), y: Math.max(2, Math.min(63, y)) };
-  }, []);
-
-  // Default spread positions — home on left half, away on right half
-  const defaultPos = (idx, side) => {
-    const isHome = side === 'home';
-    const pos = [
-      { x: isHome ?  6 : 94, y: 32.5 }, // GK
-      { x: isHome ? 20 : 80, y: 13   }, // DEF top
-      { x: isHome ? 20 : 80, y: 32.5 }, // DEF mid
-      { x: isHome ? 20 : 80, y: 52   }, // DEF bot
-      { x: isHome ? 34 : 66, y: 21   }, // MID top
-      { x: isHome ? 34 : 66, y: 44   }, // MID bot
-      { x: isHome ? 46 : 54, y: 32.5 }, // FWD
-    ];
-    return pos[idx] || { x: isHome ? 25 : 75, y: 32.5 };
-  };
-
-  const togglePlayer = (pid, side) => {
-    if (side === 'home') {
-      if (homePl[pid]) { setHomePl(prev => { const n = { ...prev }; delete n[pid]; return n; }); }
-      else if (homePlaced.length < 7) { setHomePl(prev => ({ ...prev, [pid]: defaultPos(homePlaced.length, 'home') })); }
-    } else {
-      if (awayPl[pid]) { setAwayPl(prev => { const n = { ...prev }; delete n[pid]; return n; }); }
-      else if (awayPlaced.length < 7) { setAwayPl(prev => ({ ...prev, [pid]: defaultPos(awayPlaced.length, 'away') })); }
-    }
-  };
-
-  const handlePointerDown = (e, pid, side) => {
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging({ pid, side });
-  };
-
-  const handlePointerMove = useCallback((e) => {
-    if (!dragging) return;
-    const c = svgCoords(e);
-    if (!c) return;
-    (dragging.side === 'home' ? setHomePl : setAwayPl)(prev => ({ ...prev, [dragging.pid]: c }));
-  }, [dragging, svgCoords]);
-
-  const handlePointerUp = useCallback(() => setDragging(null), []);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await db.clearMatchLineups(matchId);
-      for (const [pid, pos] of Object.entries(homePl)) await db.upsertLineup(matchId, pid, 'home', pos.x, pos.y);
-      for (const [pid, pos] of Object.entries(awayPl)) await db.upsertLineup(matchId, pid, 'away', pos.x, pos.y);
-      toast('Lineup saved!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-    setSaving(false);
-  };
-
-  const renderDot = (pid, pos, side, allPlayers) => {
-    const color = side === 'home' ? '#FFD400' : '#448AFF';
-    const player = allPlayers.find(p => p.id === pid);
-    return (
-      <g key={pid} style={{ cursor: 'grab', touchAction: 'none', userSelect: 'none' }}
-        onPointerDown={(e) => handlePointerDown(e, pid, side)}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}>
-        <circle cx={pos.x} cy={pos.y} r="5.2" fill={color} opacity={0.95} />
-        <circle cx={pos.x} cy={pos.y} r="5.7" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-        <text x={pos.x} y={pos.y + 1.5} textAnchor="middle" dominantBaseline="middle"
-          fill="#000" fontSize="3.5" fontWeight="bold" style={{ pointerEvents: 'none' }}>
-          {player?.number || '?'}
-        </text>
-        <text x={pos.x} y={pos.y + 8} textAnchor="middle"
-          fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: 'none' }}>
-          {(player?.name || '').split(' ')[0]?.slice(0, 7)}
-        </text>
-      </g>
-    );
-  };
-
-  return (
-    <div>
-      {/* Team labels above pitch */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.68rem', fontWeight: 800 }}>
-        <span style={{ color: '#FFD400' }}>← {homeTeam?.short_name || 'HOME'} ({homePlaced.length}/7)</span>
-        <span style={{ color: '#448AFF' }}>{awayTeam?.short_name || 'AWAY'} ({awayPlaced.length}/7) →</span>
-      </div>
-
-      {/* Pitch */}
-      <div style={{ borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
-        <svg ref={svgRef} viewBox="0 0 100 65" style={{ display: 'block', width: '100%', touchAction: 'none' }}>
-          <PitchSVG>
-            {Object.entries(homePl).map(([pid, pos]) => renderDot(pid, pos, 'home', homePlayers))}
-            {Object.entries(awayPl).map(([pid, pos]) => renderDot(pid, pos, 'away', awayPlayers))}
-          </PitchSVG>
-        </svg>
-      </div>
-
-      {/* Player lists */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        {[
-          { side: 'home', team: homeTeam, pl: homePlayers, placed: homePlaced, color: '#FFD400', placements: homePl },
-          { side: 'away', team: awayTeam, pl: awayPlayers, placed: awayPlaced, color: '#448AFF', placements: awayPl },
-        ].map(({ side, team, pl, placed, color, placements }) => (
-          <div key={side}>
-            <div style={{ fontSize: '0.62rem', fontWeight: 800, color, textTransform: 'uppercase', marginBottom: 5 }}>
-              {team?.short_name || side.toUpperCase()} ({placed.length}/7)
-            </div>
-            <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-              {pl.map(p => {
-                const isPlaced = !!placements[p.id];
-                const full = !isPlaced && placed.length >= 7;
-                return (
-                  <div key={p.id} onClick={() => !full && togglePlayer(p.id, side)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 6, marginBottom: 3, cursor: full ? 'not-allowed' : 'pointer', background: isPlaced ? `${color}18` : 'var(--card2)', border: `1px solid ${isPlaced ? color + '55' : 'var(--border)'}`, opacity: full ? 0.38 : 1, transition: 'all 0.15s' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 900, color, minWidth: 16 }}>#{p.number ?? '?'}</span>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isPlaced ? color : '#bbb', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                    {isPlaced && <span style={{ fontSize: '0.55rem', color }}>✓</span>}
-                  </div>
-                );
-              })}
-              {pl.length === 0 && <div style={{ fontSize: '0.62rem', color: '#555', padding: 4 }}>No players</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <button onClick={handleSave} disabled={saving}
-        style={{ width: '100%', padding: '11px', fontWeight: 900, fontSize: '0.82rem', borderRadius: 10, background: COLORS.gold, color: COLORS.dark, border: 'none', cursor: 'pointer' }}>
-        {saving ? 'Saving…' : 'Save Starting Lineup'}
-      </button>
-      <div style={{ fontSize: '0.6rem', color: '#555', textAlign: 'center', marginTop: 5 }}>
-        Click a player to place · Drag on pitch to reposition · Max 7 per team
-      </div>
-    </div>
-  );
-}
 
 function EventLogger({ players, teamMap, events, onAdd, onDelete }) {
   const [type, setType]  = useState('goal');
@@ -246,7 +48,7 @@ function EventLogger({ players, teamMap, events, onAdd, onDelete }) {
 }
 
 // ─── MATCH SHEET COMPONENT ───────────────────────────────────────────────────
-function MatchSheet({ home, away, players, matchLineups, matchEvents, teamMap, onAdd, onDelete, isKnockout }) {
+function MatchSheet({ home, away, players, matchEvents, teamMap, onAdd, onDelete, isKnockout }) {
   const [cardPid,  setCardPid]  = React.useState('');
   const [cardSide, setCardSide] = React.useState('home');
   const [penSide,  setPenSide]  = React.useState('home');
@@ -254,15 +56,8 @@ function MatchSheet({ home, away, players, matchLineups, matchEvents, teamMap, o
   const homePlayers = players.filter(p => p.team_id === home?.id);
   const awayPlayers = players.filter(p => p.team_id === away?.id);
 
-  // Squad from lineups if submitted, else full squad
-  const homeLineupIds = matchLineups.filter(l => l.side === 'home').map(l => l.player_id);
-  const awayLineupIds = matchLineups.filter(l => l.side === 'away').map(l => l.player_id);
-  const homeSquad = homeLineupIds.length
-    ? homeLineupIds.map(id => homePlayers.find(p => p.id === id)).filter(Boolean)
-    : homePlayers.filter(p => p.player_type !== 'manager');
-  const awaySquad = awayLineupIds.length
-    ? awayLineupIds.map(id => awayPlayers.find(p => p.id === id)).filter(Boolean)
-    : awayPlayers.filter(p => p.player_type !== 'manager');
+  const homeSquad = homePlayers.filter(p => p.player_type !== 'manager');
+  const awaySquad = awayPlayers.filter(p => p.player_type !== 'manager');
   const homeManagers = homePlayers.filter(p => p.player_type === 'manager');
   const awayManagers = awayPlayers.filter(p => p.player_type === 'manager');
 
@@ -377,9 +172,6 @@ function MatchSheet({ home, away, players, matchLineups, matchEvents, teamMap, o
             )}
           </tbody>
         </table>
-        {homeLineupIds.length === 0 && awayLineupIds.length === 0 && (
-          <div style={{ fontSize: '0.65rem', color: '#666', marginTop: 4, fontStyle: 'italic' }}>Showing full squad — manager lineup not yet submitted</div>
-        )}
       </div>
 
       {/* ── GOALS ── */}
@@ -545,7 +337,7 @@ function GoalAssistLogger({ players, teamMap, home, away, events, onAdd, onDelet
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function AdminMatchPage({ data, matchId, navigate }) {
-  const { matches, teamMap, players, events, allLineups, reload, setMatches, setEvents } = data;
+  const { matches, teamMap, players, events, reload, setMatches, setEvents } = data;
   const match = matches.find(m => m.id === matchId);
 
   const [section,   setSection]   = useState('score');
@@ -679,7 +471,6 @@ export default function AdminMatchPage({ data, matchId, navigate }) {
 
   const sections = [
     { key: 'score',      label: 'Score' },
-    { key: 'lineup',     label: 'Lineup' },
   ];
 
   return (
@@ -844,7 +635,6 @@ export default function AdminMatchPage({ data, matchId, navigate }) {
                 home={home}
                 away={away}
                 players={mPlayers}
-                matchLineups={(allLineups || []).filter(l => l.match_id === matchId)}
                 matchEvents={matchEvents}
                 teamMap={teamMap}
                 onAdd={handleAddEvent}
@@ -852,21 +642,6 @@ export default function AdminMatchPage({ data, matchId, navigate }) {
                 isKnockout={isKnockout}
               />
             </div>
-          </div>
-        )}
-
-        {/* ── LINEUP ────────────────────────────────────────────────────────── */}
-        {section === 'lineup' && (
-          <div>
-            <div style={{ fontSize: '0.68rem', color: '#666', marginBottom: 12, lineHeight: 1.5 }}>
-              Click a player to place them on the pitch (max 7 per team). Drag their dot to reposition.
-            </div>
-            <LineupBuilder
-              matchId={matchId}
-              homeTeam={home}
-              awayTeam={away}
-              players={mPlayers}
-            />
           </div>
         )}
 

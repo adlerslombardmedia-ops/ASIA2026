@@ -249,57 +249,6 @@ export async function deleteEvent(eventId) {
   if (error) throw error;
 }
 
-// ─── MATCH LINEUPS ──────────────────────────────────────────────────────────
-
-export async function fetchLineups(matchId) {
-  const { data, error } = await supabase
-    .from('match_lineups')
-    .select('*')
-    .eq('match_id', matchId);
-  if (error) throw error;
-  return data;
-}
-
-export async function fetchAllLineups() {
-  const { data, error } = await supabase
-    .from('match_lineups')
-    .select('*');
-  if (error) throw error;
-  return data;
-}
-
-export async function upsertLineup(matchId, playerId, side, x = null, y = null) {
-  const { error } = await supabase
-    .from('match_lineups')
-    .upsert({ match_id: matchId, player_id: playerId, side, x, y }, { onConflict: 'match_id,player_id' });
-  if (error) throw error;
-}
-
-export async function clearMatchLineups(matchId) {
-  const { error } = await supabase
-    .from('match_lineups')
-    .delete()
-    .eq('match_id', matchId);
-  if (error) throw error;
-}
-
-// ─── TACTICS ────────────────────────────────────────────────────────────────
-
-export async function fetchTactics() {
-  const { data, error } = await supabase
-    .from('tactics')
-    .select('*');
-  if (error) throw error;
-  return data;
-}
-
-export async function upsertTactics(matchId, teamId, positions) {
-  const { error } = await supabase
-    .from('tactics')
-    .upsert({ match_id: matchId, team_id: teamId, positions }, { onConflict: 'match_id,team_id' });
-  if (error) throw error;
-}
-
 // ─── TOURNAMENT STATE ───────────────────────────────────────────────────────
 
 export async function getTournamentState(key) {
@@ -419,15 +368,6 @@ export async function managerLogEvent(teamId, password, matchId, playerId, type,
 export async function managerDeleteEvent(teamId, password, eventId) {
   const { error } = await supabase.rpc('manager_delete_event', {
     p_team_id: teamId, p_password: password, p_event_id: eventId,
-  });
-  if (error) throw error;
-}
-
-export async function managerSaveLineup(teamId, password, matchId, players) {
-  // players: [{ player_id: string, x: number, y: number }]
-  const { error } = await supabase.rpc('manager_save_lineup', {
-    p_team_id: teamId, p_password: password,
-    p_match_id: matchId, p_players: players,
   });
   if (error) throw error;
 }
@@ -569,13 +509,6 @@ export function subscribeToPlayers(callback) {
   return supabase
     .channel('players-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, callback)
-    .subscribe();
-}
-
-export function subscribeToLineups(callback) {
-  return supabase
-    .channel('lineups-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups' }, callback)
     .subscribe();
 }
 
