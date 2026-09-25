@@ -6,7 +6,6 @@ const PinIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none
 const AWARD_CATEGORIES = [
   { key: 'first_place',   label: '1st Place',     type: 'team',   color: '#FFD400', medal: '1ST' },
   { key: 'second_place',  label: '2nd Place',      type: 'team',   color: '#C0C0C0', medal: '2ND' },
-  { key: 'third_place',   label: '3rd Place',      type: 'team',   color: '#CD7F32', medal: '3RD' },
   { key: 'best_player',   label: 'Best Player',   type: 'player', color: '#FFD400', medal: 'MVP' },
   { key: 'top_scorer',    label: 'Top Scorer',    type: 'player', color: '#00C853', medal: 'GLS' },
   { key: 'best_defender', label: 'Best Defender', type: 'player', color: '#448AFF', medal: 'DEF' },
