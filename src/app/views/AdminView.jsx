@@ -774,7 +774,7 @@ export default function AdminView({ data, navigate }) {
             </button>
 
             {/* Super Admin Database Reset Option */}
-            {user?.email === 'precious@keff.com' && (
+            {user?.email === 'admin@asiacup.it' && (
               <div className="kcard animate-fade" style={{ padding: 16, marginTop: 12, border: `2px solid ${COLORS.red}` }}>
                 <div style={{ fontWeight: 800, marginBottom: 4, fontSize: '0.85rem', color: COLORS.red }}>Reset Database (Super Admin)</div>
                 <p style={{ fontSize: '0.68rem', color: '#666', marginBottom: 12 }}>Warning: This will delete all players, group assignments, matches, tactics, and logged match events. Teams will remain.</p>
@@ -801,7 +801,7 @@ export default function AdminView({ data, navigate }) {
         {/* INTERACTIVE GROUP DRAW */}
         {tab === 'draw' && (
           <div>
-          {user?.email !== 'precious@keff.com' ? (
+          {user?.email !== 'admin@asiacup.it' ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: 6 }}>Access Restricted</div>

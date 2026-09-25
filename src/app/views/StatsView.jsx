@@ -3,7 +3,7 @@ import { TeamLogo, COLORS, launchConfetti } from '../lib/hooks';
 import * as db from '../lib/db';
 import { toast } from '../lib/hooks';
 
-const ADMIN_EMAILS = ['precious@keff.com', 'info@keff.com'];
+const ADMIN_EMAILS = ['admin@asiacup.it'];
 
 const AWARD_CATEGORIES = [
   { key: 'first_place',   label: '1st Place',      type: 'team',   color: COLORS.gold,   medal: '1ST' },

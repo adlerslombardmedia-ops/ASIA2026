@@ -3,7 +3,7 @@ import { COLORS, TeamLogo, VENUE_NAME, VENUE_MAP_URL, EVENT_DATE_LABEL } from '.
 import * as db from '../lib/db';
 import { toast } from '../lib/hooks';
 
-const ADMIN_EMAILS = ['precious@keff.com', 'info@keff.com'];
+const ADMIN_EMAILS = ['admin@asiacup.it'];
 
 function MessageText({ text, teamMap, navigate }) {
   const shortNameToTeam = {};
@@ -375,11 +375,11 @@ export default function InfoView({ data, navigate }) {
                   background: COLORS.gold, color: COLORS.dark,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 900, fontSize: '0.75rem', flexShrink: 0 }}>
-                  {a.author_email === 'precious@keff.com' ? 'TD' : 'AD'}
+                  {a.author_email === 'admin@asiacup.it' ? 'TD' : 'AD'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: '0.78rem', color: COLORS.gold }}>
-                    {a.author_email === 'precious@keff.com' ? 'Tournament Director' : 'Tournament Admin'}
+                    {a.author_email === 'admin@asiacup.it' ? 'Tournament Director' : 'Tournament Admin'}
                   </div>
                   <div style={{ fontSize: '0.62rem', color: '#555' }}>{timeAgo(a.created_at)}</div>
                 </div>
