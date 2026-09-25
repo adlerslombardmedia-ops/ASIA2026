@@ -1,0 +1,369 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "./app/legacy.css";
+
+/*
+ * ASIA CUP 2026 — design system
+ * Derived from the tournament badge: pitch-black shield, molten gold,
+ * cream-to-gold gradient lettering with a dark keyline, heavy slanted
+ * display type, and yellow speed lines.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-cream: var(--cream);
+  --font-display: "Anton", "Barlow Condensed", Impact, sans-serif;
+  --font-condensed: "Barlow Condensed", "Barlow", sans-serif;
+  --font-sans: "Barlow", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Badge palette */
+  --gold: #FFD400;
+  --gold-deep: #C99A00;
+  --gold-bright: #FFE566;
+  --cream: #FFF7CF;
+  --gold-glow: rgba(255, 212, 0, 0.28);
+  --dark: #0B0B0B;
+  --darker: #060606;
+  --card: #121212;
+  --card2: #181818;
+  --border: #262626;
+  --border-glow: rgba(255, 212, 0, 0.22);
+  --muted: #7A7A7A;
+  --text: #F5F2E8;
+  --text2: #B8B4A6;
+  --pattern-line: rgba(255, 255, 255, 0.018);
+  --pattern-dot: rgba(255, 212, 0, 0.05);
+
+  /* Gradients & shadows */
+  --gradient-gold: linear-gradient(180deg, var(--cream) 0%, #FFE566 35%, var(--gold) 70%, var(--gold-deep) 100%);
+  --gradient-gold-flat: linear-gradient(135deg, #FFE566 0%, var(--gold) 55%, #E6B800 100%);
+  --gradient-shield: radial-gradient(120% 80% at 50% 0%, #1c1a10 0%, #0b0b0b 55%, #060606 100%);
+  --shadow-gold: 0 0 0 1px rgba(255, 212, 0, 0.35), 0 10px 30px -12px rgba(255, 212, 0, 0.45);
+  --shadow-card: 0 10px 30px -18px rgba(0, 0, 0, 0.9);
+  --keyline: 0 0 0 2px #000;
+
+  /* shadcn tokens (dark only) */
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.96 0.01 95);
+  --card: #121212;
+  --card-foreground: oklch(0.96 0.01 95);
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.96 0.01 95);
+  --primary: oklch(0.88 0.19 95);
+  --primary-foreground: oklch(0.13 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.96 0.01 95);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.62 0.01 95);
+  --accent: oklch(0.88 0.19 95);
+  --accent-foreground: oklch(0.13 0 0);
+  --destructive: oklch(0.62 0.22 22);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: #262626;
+  --input: oklch(0.26 0 0);
+  --ring: oklch(0.88 0.19 95);
+}
+
+/* ─── Base overrides on top of the ported stylesheet ─────────────────── */
+html { color-scheme: dark; }
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--darker);
+  background-image:
+    repeating-linear-gradient(-32deg, var(--pattern-line) 0 2px, transparent 2px 46px),
+    radial-gradient(circle, var(--pattern-dot) 1px, transparent 1.5px);
+  background-size: auto, 28px 28px;
+}
+
+h1, h2, h3, .section-title, .display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Gradient gold lettering with the badge's black keyline */
+.gold-text {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(255, 212, 0, 0.25));
+}
+
+.slant { transform: skewX(-8deg); display: inline-block; }
+
+/* Speed lines, like the yellow strokes on the badge */
+.speedlines {
+  position: relative;
+  overflow: hidden;
+}
+.speedlines::before,
+.speedlines::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  width: 46%;
+  height: 64%;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--gold) 0 0) 0 10% / 70% 3px no-repeat,
+    linear-gradient(90deg, var(--gold) 0 0) 0 30% / 55% 3px no-repeat,
+    linear-gradient(90deg, var(--gold) 0 0) 0 50% / 40% 3px no-repeat;
+  opacity: 0.55;
+  mask-image: linear-gradient(90deg, #000 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 100%);
+}
+.speedlines::before { left: -6%; transform: skewY(-9deg); }
+.speedlines::after { right: -6%; transform: scaleX(-1) skewY(-9deg); }
+
+/* ─── Hero ────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 28px 16px 0;
+  background: var(--gradient-shield);
+  border-bottom: 3px solid var(--gold);
+  isolation: isolate;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -3px;
+  height: 10px;
+  background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+  filter: blur(8px);
+  opacity: 0.6;
+  z-index: -1;
+}
+.hero-logo {
+  width: min(78vw, 300px);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 24px rgba(255, 212, 0, 0.18));
+  animation: hero-float 6s ease-in-out infinite;
+}
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.hero-kicker {
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-title {
+  font-size: clamp(2.6rem, 11vw, 4rem);
+  line-height: 0.95;
+  margin: 6px 0 4px;
+}
+.hero-year {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 5vw, 1.6rem);
+  letter-spacing: 0.35em;
+  padding: 2px 14px 2px 20px;
+  color: #0b0b0b;
+  background: var(--gradient-gold-flat);
+  clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+}
+.hero-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-bottom: 18px;
+}
+.fact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.fact-chip strong { color: var(--gold); font-weight: 800; }
+.fact-chip:hover { border-color: var(--gold); color: var(--text); }
+
+/* ─── Cards / buttons / tabs ───────────────────────────────────────────── */
+.kcard {
+  border-radius: 10px;
+  background: linear-gradient(180deg, #151515, #101010);
+  box-shadow: var(--shadow-card);
+}
+.kcard:hover { border-color: var(--border-glow); }
+
+.btn { font-family: var(--font-condensed); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.btn-gold {
+  background: var(--gradient-gold-flat);
+  color: #0b0b0b;
+  box-shadow: 0 2px 0 var(--gold-deep), 0 8px 18px -10px rgba(255, 212, 0, 0.6);
+}
+.btn-gold:hover { background: var(--gradient-gold-flat); filter: brightness(1.06); }
+
+.section-title { font-size: 1.25rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 10px;
+}
+.section-header .section-title { position: relative; padding-left: 14px; }
+.section-header .section-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10%;
+  height: 80%;
+  width: 5px;
+  background: var(--gradient-gold);
+  transform: skewX(-12deg);
+}
+
+/* Sub-tab strips (Groups / Group Stage / Knockouts / Awards) */
+.tabbar {
+  display: flex;
+  background: rgba(8, 8, 8, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.tabbar button {
+  flex: 1;
+  padding: 13px 4px;
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: clamp(0.72rem, 3vw, 0.86rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tabbar button.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.standings-table th {
+  font-family: var(--font-condensed);
+  letter-spacing: 0.12em;
+  color: var(--gold-deep);
+}
+.standings-table tr.qualify td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+
+.pill-gold { background: var(--gradient-gold-flat); color: #0b0b0b; }
+
+/* ─── Bottom navigation ───────────────────────────────────────────────── */
+.bottom-nav {
+  background: rgba(6, 6, 6, 0.94);
+  border-top: 2px solid var(--gold);
+  box-shadow: 0 -12px 30px -18px rgba(255, 212, 0, 0.35);
+}
+.nav-item { font-family: var(--font-condensed); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; }
+.nav-item.active { color: var(--gold); text-shadow: 0 0 12px var(--gold-glow); }
+
+/* ─── Sponsors ────────────────────────────────────────────────────────── */
+.sponsors-banner {
+  background: linear-gradient(180deg, transparent, rgba(255, 212, 0, 0.04));
+  border-top: 1px solid var(--border);
+}
+.sponsors-title { color: var(--gold); letter-spacing: 0.32em; font-family: var(--font-condensed); font-size: 0.8rem; }
+.sponsor-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.sponsor-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-gold); }
+.sponsor-logo { opacity: 1; }
+
+/* ─── Splash ──────────────────────────────────────────────────────────── */
+.splash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--gradient-shield);
+}
+.splash-logo { width: min(70vw, 260px); filter: drop-shadow(0 0 30px rgba(255, 212, 0, 0.25)); }
+.splash-bar {
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  background-size: 200% 100%;
+  animation: splash-sweep 1.2s linear infinite;
+}
+@keyframes splash-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Notice shown while the database is not connected yet */
+.db-notice {
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--gold-deep);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  background: rgba(255, 212, 0, 0.05);
+}
+.db-notice strong { color: var(--gold); }
+
+.theme-toggle { display: none !important; }
