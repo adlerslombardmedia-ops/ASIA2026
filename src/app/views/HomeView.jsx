@@ -17,19 +17,26 @@ const AWARD_CATEGORIES = [
 export default function HomeView({ data, subTab, setSubTab, navigate }) {
   const { teams, matches, standings, groups, teamMap, awards, players } = data;
   const [showTeamsModal, setShowTeamsModal] = useState(false);
+  const [matchFilter, setMatchFilter] = useState('all');
 
-  const groupMatches = matches.filter(m => m.stage === 'group');
   const hasGroups = Object.values(groups).some(g => g.length > 0);
 
-  // Sort: LIVE first, then by match_number
-  const sortMatches = (list) => {
+  // All Matches tab: every match (group + knockout), ordered by kickoff time
+  const sortByTime = (list) => {
     return [...list].sort((a, b) => {
-      const aLive = a.status === 'live' ? 0 : 1;
-      const bLive = b.status === 'live' ? 0 : 1;
-      if (aLive !== bLive) return aLive - bLive;
+      const at = a.match_time || '99:99:99';
+      const bt = b.match_time || '99:99:99';
+      if (at !== bt) return at < bt ? -1 : 1;
+      if ((a.ground || '') !== (b.ground || '')) return (a.ground || '').localeCompare(b.ground || '');
       return (a.match_number || 999) - (b.match_number || 999);
     });
   };
+  const allMatchesFiltered = sortByTime(matches.filter(m => {
+    if (matchFilter === 'all') return true;
+    if (matchFilter === 'knockout') return m.stage !== 'group';
+    return m.stage === 'group' && m.group_letter === matchFilter;
+  }));
+  const stageLabel = m => m.stage === 'group' ? `Group ${m.group_letter} · M${m.match_number || '?'}` : (m.label || m.stage);
 
   return (
     <>
@@ -49,7 +56,7 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
       <div className="tabbar">
         {[
           { key: 'groups', label: 'Groups' },
-          { key: 'fixtures', label: 'Group Stage' },
+          { key: 'fixtures', label: 'All Matches' },
           { key: 'knockouts', label: 'Knockouts' },
           { key: 'awards', label: 'Awards' },
         ].map(tab => (
@@ -130,65 +137,82 @@ export default function HomeView({ data, subTab, setSubTab, navigate }) {
 
         {/* FIXTURES TAB */}
         {subTab === 'fixtures' && (
-          groupMatches.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#555' }}>
-              <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4, color: '#888' }}>No Fixtures Yet</div>
-              <div style={{ fontSize: '0.82rem' }}>Fixtures appear after the group draw is finalised.</div>
+          <>
+            {/* Group / Knockout filter */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'A', label: 'Group A' },
+                { key: 'B', label: 'Group B' },
+                { key: 'C', label: 'Group C' },
+                { key: 'D', label: 'Group D' },
+                { key: 'knockout', label: 'Knockout' },
+              ].map(f => (
+                <button key={f.key} onClick={() => setMatchFilter(f.key)}
+                  className="tappable"
+                  style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 800,
+                    border: `1.5px solid ${matchFilter === f.key ? COLORS.gold : 'var(--border)'}`,
+                    background: matchFilter === f.key ? `${COLORS.gold}20` : 'transparent',
+                    color: matchFilter === f.key ? COLORS.gold : '#888' }}>
+                  {f.label}
+                </button>
+              ))}
             </div>
-          ) : (
-            ['A', 'B', 'C', 'D'].map(g => {
-              const gm = groupMatches.filter(m => m.group_letter === g);
-              const sortedGm = sortMatches(gm);
-              if (sortedGm.length === 0) return null;
-              return (
-                <div key={g} className="kcard animate-fade" style={{ marginBottom: 16 }}>
-                  <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, background: COLORS.gold, color: COLORS.dark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.72rem' }}>{g}</div>
-                    <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Group {g}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: '#666', fontWeight: 600 }}>{gm.filter(m => m.played).length}/{gm.length} played</span>
-                  </div>
-                  {sortedGm.map(m => {
-                    const home = teamMap[m.home_team_id];
-                    const away = teamMap[m.away_team_id];
-                    const isLive = m.status === 'live';
 
-                    return (
-                      <div key={m.id} className="match-card tappable" onClick={() => navigate('match', { matchId: m.id })}
-                        style={{ display: 'flex', flexDirection: 'column', padding: '12px 14px', gap: 6,
-                          background: isLive ? 'rgba(0,200,83,0.04)' : undefined,
-                          borderLeft: isLive ? '3px solid #00C853' : undefined }}>
+            {matches.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#555' }}>
+                <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4, color: '#888' }}>No Fixtures Yet</div>
+                <div style={{ fontSize: '0.82rem' }}>Fixtures appear after the group draw is finalised.</div>
+              </div>
+            ) : allMatchesFiltered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#555', fontSize: '0.82rem' }}>No matches in this filter.</div>
+            ) : (
+              <div className="kcard animate-fade">
+                {allMatchesFiltered.map(m => {
+                  const home = teamMap[m.home_team_id];
+                  const away = teamMap[m.away_team_id];
+                  const isLive = m.status === 'live';
+
+                  return (
+                    <div key={m.id} className="match-card tappable" onClick={() => navigate('match', { matchId: m.id })}
+                      style={{ display: 'flex', flexDirection: 'column', padding: '12px 14px', gap: 6,
+                        borderBottom: '1px solid var(--border)',
+                        background: isLive ? 'rgba(0,200,83,0.04)' : undefined,
+                        borderLeft: isLive ? '3px solid #00C853' : undefined }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#666' }}>{stageLabel(m)}</span>
                         {isLive && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00C853', display: 'inline-block', animation: 'pulse 1s infinite' }} />
                             <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#00C853', letterSpacing: 1, textTransform: 'uppercase' }}>Live Now</span>
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <div className="match-team-col" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                            <TeamLogo team={home} size={40} />
-                            <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{home?.name || 'TBD'}</span>
-                          </div>
-                          <div className={`match-score-box ${m.played ? 'played' : isLive ? 'live' : 'upcoming'}`} style={{ margin: '0 12px' }}>
-                            {m.played ? `${m.home_score} - ${m.away_score}` : isLive ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : 'VS'}
-                          </div>
-                          <div className="match-team-col away" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
-                            <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{away?.name || 'TBD'}</span>
-                            <TeamLogo team={away} size={40} />
-                          </div>
-                        </div>
-                        {(m.match_time || m.ground) && (
-                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 2, fontSize: '0.68rem', fontWeight: 700 }}>
-                            {m.match_time && <span style={{ color: COLORS.gold }}>Time: {m.match_time.slice(0, 5)}</span>}
-                            {m.ground && <span style={{ color: '#888' }}>Ground: {m.ground}</span>}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              );
-            })
-          )
+                      <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <div className="match-team-col" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                          <TeamLogo team={home} size={40} />
+                          <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{home?.name || m.home_source || 'TBD'}</span>
+                        </div>
+                        <div className={`match-score-box ${m.played ? 'played' : isLive ? 'live' : 'upcoming'}`} style={{ margin: '0 12px' }}>
+                          {m.played ? `${m.home_score} - ${m.away_score}` : isLive ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : 'VS'}
+                        </div>
+                        <div className="match-team-col away" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+                          <span className="match-team-name" style={{ fontWeight: 700, fontSize: '0.82rem' }}>{away?.name || m.away_source || 'TBD'}</span>
+                          <TeamLogo team={away} size={40} />
+                        </div>
+                      </div>
+                      {(m.match_time || m.ground) && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 2, fontSize: '0.68rem', fontWeight: 700 }}>
+                          {m.match_time && <span style={{ color: COLORS.gold }}>Time: {m.match_time.slice(0, 5)}</span>}
+                          {m.ground && <span style={{ color: '#888' }}>Ground: {m.ground}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         {/* KNOCKOUTS TAB */}
